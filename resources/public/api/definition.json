@@ -4,8 +4,8 @@
   "api": {
     "name": "Self Assessment Liability API",
     "description": "An API to retrieve Self Assessment Liability payment details.",
-    "context": "discuss-with-the-api-platform-team",
-    "categories": ["OTHER"],
+    "context": "self-assessment-liability-api",
+    "categories": ["SELF_ASSESSMENT"],
     "versions": [
       {
         "version": "1.0",
