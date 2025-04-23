@@ -4,3 +4,4 @@ service-type: backend
 tags: ['api']
 test-repositories:
   - self-assessment-liability-api-acceptance-tests
+  - self-assessment-liabilities-performance-tests
