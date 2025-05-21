@@ -16,7 +16,6 @@
 
 package controllers
 
-import controllers.Assets
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
