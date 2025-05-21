@@ -14,22 +14,13 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.selfassessmentliabilityapi.controllers
+package config
 
-import controllers.Assets
 import javax.inject.{Inject, Singleton}
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import play.api.Configuration
 
 @Singleton
-class DocumentationController @Inject() (assets: Assets, cc: ControllerComponents)
-    extends BackendController(cc) {
+class AppConfig @Inject() (config: Configuration) {
 
-  def definition(): Action[AnyContent] = {
-    assets.at("/public/api", "definition.json")
-  }
-
-  def specification(version: String, file: String): Action[AnyContent] = {
-    assets.at(s"/public/api/conf/$version", file)
-  }
+  val appName: String = config.get[String]("appName")
 }
