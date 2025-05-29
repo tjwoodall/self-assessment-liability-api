@@ -1,2 +1,3 @@
 # microservice specific routes
 
+GET         /:utr                                                                                     controllers.SelfAssessmentHistoryController.getYourSelfAssessmentData(utr)
