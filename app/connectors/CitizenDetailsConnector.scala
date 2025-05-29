@@ -42,10 +42,6 @@ class CitizenDetailsConnector @Inject() (appConfig: AppConfig, http: HttpClientV
           case _   => Error(response.status, "Unexpected result.")
         }
       }
-      .recoverWith { case t: Throwable =>
-        logger.warn("Unexpected response from Citizen Details", t)
-        Future.failed(new RuntimeException("Citizen Details", t))
-      }
 
   private def extractNinoFromResponse(json: JsValue): Option[String] = {
     (json \ "ids" \ "nino").asOpt[String]
