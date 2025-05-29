@@ -17,6 +17,7 @@
 package connectors
 
 import config.AppConfig
+import models.Error
 
 import play.api.Logging
 import play.api.libs.json.JsValue
@@ -28,18 +29,17 @@ import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
 
 @Singleton
 class CitizenDetailsConnector @Inject() (appConfig: AppConfig, http: HttpClientV2)(implicit ec: ExecutionContext) extends Logging {
-  def searchByUtr(utr: String)(implicit hc: HeaderCarrier): Future[Option[String]] =
+  def searchByUtr(utr: String)(implicit hc: HeaderCarrier): Future[Either[Error, Option[String]]] =
     http
-      .get(new URL(s"appConfig.citizenDetailsBaseUrl/citizen-details/sautr/$utr"))
-//      .get(new URL(s"${appConfig.citizenDetailsBaseUrl}/citizen-details/sautr/$utr"))
+      .get(new URL(s"${appConfig.citizenDetailsBaseUrl}/citizen-details/sautr/$utr"))
       .execute[HttpResponse]
       .map { response =>
         response.status match {
           case 200 => extractNinoFromResponse(response.json)
-          case 400 => None
-          case 404 => None
-          case 500 => None
-          case _   => None
+          case 400 => Error(response.status, "Invalid SaUtr.")
+          case 404 => Error(response.status, "No record for the given SaUtr is found.")
+          case 500 => Error(response.status, "More than one valid matching result.")
+          case _   => Error(response.status, "Unexpected result.")
         }
       }
       .recoverWith { case t: Throwable =>
@@ -48,18 +48,6 @@ class CitizenDetailsConnector @Inject() (appConfig: AppConfig, http: HttpClientV
       }
 
   private def extractNinoFromResponse(json: JsValue): Option[String] = {
-    val currentFirstName: Option[String] = (json \ "name" \ "current" \ "firstName").asOpt[String]
-    val currentLastName: Option[String] = (json \ "name" \ "current" \ "lastName").asOpt[String]
-    val nino: Option[String] = (json \ "ids" \ "nino").asOpt[String]
-    val dateOfBirth: Option[String] = (json \ "dateOfBirth").asOpt[String]
-
-    if (currentFirstName.isEmpty || currentLastName.isEmpty || dateOfBirth.isEmpty) {
-      // TODO: Response body format change.
-    }
-    if (nino.isEmpty) {
-      // TODO: No NINO for UTR.
-    }
-
-    nino
+    (json \ "ids" \ "nino").asOpt[String]
   }
 }

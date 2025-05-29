@@ -23,28 +23,19 @@ class CitizenDetailsConnectorSpec extends BaseConnectorSpec {
     "return Some(nino) when the backend returns status 200 and all expected" in {
 
     }
-    "return None when the backend returns status 200 without first name" in {
-
-    }
-    "return None when the backend returns status 200 without last name" in {
-
-    }
-    "return None when the backend returns status 200 without date of birth" in {
-
-    }
     "return None when the backend returns status 200 without nino" in {
 
     }
-    "return None when the backend returns status 400" in {
+    "return Error when the backend returns status 400" in {
 
     }
-    "return None when the backend returns status 404" in {
+    "return Error when the backend returns status 404" in {
 
     }
-    "return None when the backend returns status 500" in {
+    "return Error when the backend returns status 500" in {
 
     }
-    "return None when the backend returns any other status" in {
+    "return Error when the backend returns any other status" in {
 
     }
   }
