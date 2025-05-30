@@ -41,8 +41,12 @@ trait HttpWireMock extends BeforeAndAfterAll with BeforeAndAfterEach {
     super.afterAll()
     server.stop()
   }
-  
-  protected def stubGet(expectedEndpoint: String, expectedStatus: Int, expectedBody: String): StubMapping =
+
+  protected def stubGet(
+      expectedEndpoint: String,
+      expectedStatus: Int,
+      expectedBody: String
+  ): StubMapping =
     server.stubFor(
       get(urlEqualTo(s"$expectedEndpoint"))
         .willReturn(

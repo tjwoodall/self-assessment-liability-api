@@ -34,8 +34,16 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
       .flatMap {
         case response if response.status == 200 => response.json.as[MtdId].toFuture
         case response if response.status == 400 =>
-          Future.failed(ApiErrorResponses.apply(status = 400, message = "Invalid national insurance number returned from citizen details"))
-        case _ => Future.failed(ApiErrorResponses.apply(status = 500, message = "Service currently unavailable"))
+          Future.failed(
+            ApiErrorResponses.apply(
+              status = 400,
+              message = "Invalid national insurance number returned from citizen details"
+            )
+          )
+        case _ =>
+          Future.failed(
+            ApiErrorResponses.apply(status = 500, message = "Service currently unavailable")
+          )
       }
   }
 }

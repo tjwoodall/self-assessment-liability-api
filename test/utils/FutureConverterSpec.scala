@@ -16,16 +16,14 @@
 
 package utils
 
-
 import shared.SpecBase
 import utils.FutureConverter.FutureOps
 
 class FutureConverterSpec extends SpecBase {
 
-      val test: String = "success"
-      "wrap any type in a successful future" in {
-        test.toFuture.futureValue mustEqual test
-      }
-
+  val test: String = "success"
+  "wrap any type in a successful future" in {
+    test.toFuture.futureValue mustEqual test
+  }
 
 }

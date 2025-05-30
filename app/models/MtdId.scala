@@ -18,7 +18,7 @@ package models
 
 import play.api.libs.json.{Json, Reads}
 
-case class MtdId (mtdbsa: String)
+case class MtdId(mtdbsa: String)
 
 object MtdId {
   implicit val reads: Reads[MtdId] = Json.reads[MtdId]

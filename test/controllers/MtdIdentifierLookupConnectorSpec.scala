@@ -30,36 +30,39 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
       conf = "microservice.services.mtd-id-lookup.port" -> server.port()
     )
     .build()
-  private lazy val connector: MtdIdentifierLookupConnector = app.injector.instanceOf[MtdIdentifierLookupConnector]
-  private def serviceUrl(nino:String) = s"/mtd-identifier-lookup/nino/$nino"
+  private lazy val connector: MtdIdentifierLookupConnector =
+    app.injector.instanceOf[MtdIdentifierLookupConnector]
+  private def serviceUrl(nino: String) = s"/mtd-identifier-lookup/nino/$nino"
   private val mtdId: MtdId = MtdId("MtdItId")
-  private val successResponse : String = Json.obj("mtdbsa" -> "MtdItId").toString
-  private val badRequestResponse : ApiErrorResponses = ApiErrorResponses.apply(status = 400, message = "Invalid national insurance number returned from citizen details")
-  private val internalServerErrorResponse : ApiErrorResponses = ApiErrorResponses.apply(status = 500, message = "Service currently unavailable")
+  private val successResponse: String = Json.obj("mtdbsa" -> "MtdItId").toString
+  private val badRequestResponse: ApiErrorResponses = ApiErrorResponses.apply(
+    status = 400,
+    message = "Invalid national insurance number returned from citizen details"
+  )
+  private val internalServerErrorResponse: ApiErrorResponses =
+    ApiErrorResponses.apply(status = 500, message = "Service currently unavailable")
 
-  
+  "getMtdId" should {
+    "return group IDs associated with an enrolment if 200 response is received" in {
 
-    "getMtdId" should {
-      "return group IDs associated with an enrolment if 200 response is received" in {
-
-        stubGet(serviceUrl("nino"), OK, successResponse)
-        val result = connector.getMtdId("nino")
-        result.futureValue mustBe mtdId
-      }
-
-      "return invalid nino error in case of a 400 response" in {
-        stubGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
-        val result = connector.getMtdId("invalidNino")
-        result.failed.futureValue mustBe badRequestResponse
-
-      }
-
-      "return internal server error in case of a any other response" in {
-        stubGet(serviceUrl("ninoCausinginternalError"), INTERNAL_SERVER_ERROR, "")
-        val result = connector.getMtdId("ninoCausinginternalError")
-        result.failed.futureValue mustBe internalServerErrorResponse
-
-      }
+      stubGet(serviceUrl("nino"), OK, successResponse)
+      val result = connector.getMtdId("nino")
+      result.futureValue mustBe mtdId
     }
+
+    "return invalid nino error in case of a 400 response" in {
+      stubGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
+      val result = connector.getMtdId("invalidNino")
+      result.failed.futureValue mustBe badRequestResponse
+
+    }
+
+    "return internal server error in case of a any other response" in {
+      stubGet(serviceUrl("ninoCausinginternalError"), INTERNAL_SERVER_ERROR, "")
+      val result = connector.getMtdId("ninoCausinginternalError")
+      result.failed.futureValue mustBe internalServerErrorResponse
+
+    }
+  }
 
 }
