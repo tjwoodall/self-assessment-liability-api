@@ -10,7 +10,9 @@ object CodeCoverageSettings {
     "app.*",
     "prod.*",
     ".*Routes.*",
+    "config.*",
     "testOnly.*",
+    "controllers.DocumentationController",
     "models.*",
     "testOnlyDoNotUseInAppConf.*"
   )
