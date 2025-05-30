@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-package config
+package utils
 
-import javax.inject.{Inject, Singleton}
-import play.api.Configuration
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
-@Singleton
-class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig) {
+import shared.SpecBase
+import utils.FutureConverter.FutureOps
 
-  val mtdIdLookup: String = servicesConfig.baseUrl("mtd-id-lookup")
-  
-  
+class FutureConverterSpec extends SpecBase {
+
+      val test: String = "success"
+      "wrap any type in a successful future" in {
+        test.toFuture.futureValue mustEqual test
+      }
+
+
 }
