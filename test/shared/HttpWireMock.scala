@@ -17,11 +17,10 @@
 package shared
 
 import com.github.tomakehurst.wiremock.WireMockServer
-import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.client.WireMock.*
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import com.github.tomakehurst.wiremock.stubbing.StubMapping
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
-import play.api.libs.json.{Format, JsValue, Json}
 
 trait HttpWireMock extends BeforeAndAfterAll with BeforeAndAfterEach {
   this: SpecBase =>

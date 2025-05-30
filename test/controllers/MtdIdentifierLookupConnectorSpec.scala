@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package connectors
+package controllers
 
-
+import connectors.MtdIdentifierLookupConnector
 import models.{ApiErrorResponses, MtdId}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder

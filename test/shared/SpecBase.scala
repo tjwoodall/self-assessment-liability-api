@@ -16,7 +16,6 @@
 
 package shared
 
-import config.AppConfig
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
