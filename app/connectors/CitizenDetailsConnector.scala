@@ -17,33 +17,51 @@
 package connectors
 
 import config.AppConfig
-import models.Error
+import models.ApiErrorResponses
 
-import play.api.Logging
-import play.api.libs.json.JsValue
+import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
-import java.net.URL
-import javax.inject.{Inject, Singleton}
+import play.api.libs.json.JsValue
+import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 
-@Singleton
-class CitizenDetailsConnector @Inject() (appConfig: AppConfig, http: HttpClientV2)(implicit ec: ExecutionContext) extends Logging {
-  def searchByUtr(utr: String)(implicit hc: HeaderCarrier): Future[Either[Error, Option[String]]] =
-    http
-      .get(new URL(s"${appConfig.citizenDetailsBaseUrl}/citizen-details/sautr/$utr"))
+class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
+  def getNino(utr: String)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[String] = {
+    client
+      .get(url"${appConfig.citizenDetailsLookup}/citizen-details/sautr/$utr")
       .execute[HttpResponse]
-      .map { response =>
-        response.status match {
-          case 200 => extractNinoFromResponse(response.json)
-          case 400 => Error(response.status, "Invalid SaUtr.")
-          case 404 => Error(response.status, "No record for the given SaUtr is found.")
-          case 500 => Error(response.status, "More than one valid matching result.")
-          case _   => Error(response.status, "Unexpected result.")
-        }
+      .flatMap {
+        case response if response.status == 200 =>
+          Future.apply((response.json \ "ids" \ "nino").as[String])
+        case response if response.status == 400 =>
+          Future.failed(
+            ApiErrorResponses.apply(
+              status = 400,
+              message = "Invalid SaUtr."
+            )
+          )
+        case response if response.status == 404 =>
+          Future.failed(
+            ApiErrorResponses.apply(
+              status = 404,
+              message = "No record for the given SaUtr is found."
+            )
+          )
+        case response if response.status == 500 =>
+          Future.failed(
+            ApiErrorResponses.apply(
+              status = 500,
+              message = "More than one valid matching result."
+            )
+          )
+        case _ =>
+          Future.failed(
+            ApiErrorResponses.apply(
+              status = 500,
+              message = "Service currently unavailable"
+            )
+          )
       }
-
-  private def extractNinoFromResponse(json: JsValue): Option[String] = {
-    (json \ "ids" \ "nino").asOpt[String]
   }
 }

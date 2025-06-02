@@ -23,7 +23,8 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 @Singleton
 class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig) {
 
+  val citizenDetailsLookup: String = servicesConfig.baseUrl("citizen-details")
   val mtdIdLookup: String = servicesConfig.baseUrl("mtd-id-lookup")
-  val appName: String = config.get[String]("appName")
 
+  val appName: String = config.get[String]("appName")
 }

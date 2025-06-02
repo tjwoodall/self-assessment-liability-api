@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package controllers
+package connectors
 
 import connectors.MtdIdentifierLookupConnector
 import models.{ApiErrorResponses, MtdId}
