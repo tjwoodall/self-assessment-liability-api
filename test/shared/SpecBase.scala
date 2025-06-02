@@ -16,7 +16,7 @@
 
 package shared
 
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterEach, OptionValues}
@@ -32,6 +32,7 @@ trait SpecBase
     extends AnyWordSpec
     with OptionValues
     with ScalaFutures
+    with IntegrationPatience
     with BeforeAndAfterEach
     with Matchers
     with Results
