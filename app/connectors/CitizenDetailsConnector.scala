@@ -33,7 +33,7 @@ class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppCon
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
-          Future.apply((response.json \ "ids" \ "nino").as[String])
+          Future.successful((response.json \ "ids" \ "nino").as[String])
         case response if response.status == 400 =>
           Future.failed(
             ApiErrorResponses.apply(
