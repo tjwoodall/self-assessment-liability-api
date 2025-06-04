@@ -17,7 +17,7 @@
 package controllers
 
 import config.AppConfig
-import models.ServiceErrors.Downstream_Error
+import models.ServiceErrors.{Downstream_Error, More_Than_One_NINO_Found_For_SAUTR}
 import models.{ApiErrorResponses, RequestData}
 import play.api.mvc.*
 import services.SelfAssessmentService
@@ -43,7 +43,7 @@ class AuthenticateRequestController(
   def authorisedAction(utr: String)(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent] = {
     Action.async(cc.parsers.anyContent) { request =>
       implicit val headerCarrier: HeaderCarrier = hc(request)
-    
+
         authorised(selfAssessmentEnrolments(utr)) {
           Future.successful(Right(RequestData(utr, None, request)))
         }
@@ -61,7 +61,7 @@ class AuthenticateRequestController(
                 case _ => Future.successful(Left(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "unsupported affinity group").asJson)))
               }
             }.recoverWith {
-              case _: ApiErrorResponses => Future.successful(Left(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "unsupported affinity group").asJson)))
+              case More_Than_One_NINO_Found_For_SAUTR => Future.successful(Left(InternalServerError(ApiErrorResponses(More_Than_One_NINO_Found_For_SAUTR.toString, "more than one nino found").asJson)))
             }
           }.flatMap {
           case Right(requestData) => block(requestData)
