@@ -40,33 +40,30 @@ class AuthenticateRequestController(
     extends BackendController(cc)
     with AuthorisedFunctions {
 
-  def authorisedAction(utr: String)(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent] = {
+  def authorisedAction(utr: String)(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent]= {
     Action.async(cc.parsers.anyContent) { request =>
       implicit val headerCarrier: HeaderCarrier = hc(request)
 
         authorised(selfAssessmentEnrolments(utr)) {
-          Future.successful(Right(RequestData(utr, None, request)))
+         block(RequestData(utr, None, request))
         }
           .recoverWith { case _: AuthorisationException =>
             selfAssessmentService.getMtdIdFromUtr(utr).flatMap { id =>
               authorised(checkForMtdEnrolment(id)).retrieve(affinityGroup) {
                 case Some(Individual) =>
-                  Future.successful(Right(RequestData(utr, None, request)))
+                  block(RequestData(utr, None, request))
                 case Some(Organisation) =>
-                  Future.successful(Right(RequestData(utr, None, request)))
+                  block(RequestData(utr, None, request))
                 case Some(Agent) =>
                   authorised(agentDelegatedEnrolments(utr, id)) {
-                    Future.successful(Right(RequestData(utr, None, request)))
+                    block(RequestData(utr, None, request))
                   }
-                case _ => Future.successful(Left(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "unsupported affinity group").asJson)))
+                case _ => Future.successful(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "unsupported affinity group").asJson))
               }
             }.recoverWith {
-              case More_Than_One_NINO_Found_For_SAUTR => Future.successful(Left(InternalServerError(ApiErrorResponses(More_Than_One_NINO_Found_For_SAUTR.toString, "more than one nino found").asJson)))
+              case More_Than_One_NINO_Found_For_SAUTR => Future.successful(InternalServerError(ApiErrorResponses(More_Than_One_NINO_Found_For_SAUTR.toString, "more than one nino found").asJson))
             }
-          }.flatMap {
-          case Right(requestData) => block(requestData)
-          case Left(result) => Future.successful(result)
-        }
+          }
     }
   }
 
