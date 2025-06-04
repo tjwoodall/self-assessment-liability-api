@@ -17,7 +17,7 @@
 package models
 
 sealed abstract class ServiceErrors extends Throwable{
-override def toString :String = this.toString.replace("$", "")
+  override def toString: String = getClass.getSimpleName.replace("$", "")
 }
 
 object ServiceErrors {
@@ -26,4 +26,5 @@ object ServiceErrors {
   case object Invalid_NINO extends ServiceErrors
   case object More_Than_One_NINO_Found_For_SAUTR extends ServiceErrors
   case object No_NINO_Found_For_SAUTR extends ServiceErrors
+  case object Not_Allowed extends ServiceErrors
 }

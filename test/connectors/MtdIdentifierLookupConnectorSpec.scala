@@ -17,6 +17,7 @@
 package connectors
 
 import connectors.MtdIdentifierLookupConnector
+import models.ServiceErrors.{Downstream_Error, Invalid_NINO}
 import models.{ApiErrorResponses, MtdId}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -35,32 +36,25 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
   private def serviceUrl(nino: String) = s"/mtd-identifier-lookup/nino/$nino"
   private val mtdId: MtdId = MtdId("MtdItId")
   private val successResponse: String = Json.obj("mtdbsa" -> "MtdItId").toString
-  private val badRequestResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    errorType = 400,
-    message = "Invalid national insurance number returned from citizen details"
-  )
-  private val internalServerErrorResponse: ApiErrorResponses =
-    ApiErrorResponses.apply(errorType = 500, message = "Service currently unavailable")
 
   "getMtdId" should {
     "return mtd ID associated with the nino if 200 response is received" in {
-
       simmulateGet(serviceUrl("nino"), OK, successResponse)
       val result = connector.getMtdId("nino")
       result.futureValue mustBe mtdId
     }
 
-    "return invalid nino error in case of a 400 response" in {
+    "return Invalid_NINO error in case of a 400 response" in {
       simmulateGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
       val result = connector.getMtdId("invalidNino")
-      result.failed.futureValue mustBe badRequestResponse
+      result.failed.futureValue mustBe Invalid_NINO
 
     }
 
-    "return internal server error in case of a any other response" in {
+    "return Downstream_Error in case of a any other response" in {
       simmulateGet(serviceUrl("ninoCausingInternalError"), INTERNAL_SERVER_ERROR, "")
       val result = connector.getMtdId("ninoCausinginternalError")
-      result.failed.futureValue mustBe internalServerErrorResponse
+      result.failed.futureValue mustBe Downstream_Error
 
     }
   }
