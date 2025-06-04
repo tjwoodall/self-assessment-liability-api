@@ -17,8 +17,10 @@
 package controllers
 
 import config.AppConfig
+import models.ServiceErrors.Downstream_Error
 import models.{ApiErrorResponses, RequestData}
 import play.api.mvc.*
+import services.SelfAssessmentService
 import uk.gov.hmrc.auth.core.AffinityGroup.{Agent, Individual, Organisation}
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{affinityGroup, authorisedEnrolments}
@@ -32,43 +34,41 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class AuthenticateRequestController(
     cc: ControllerComponents,
+    selfAssessmentService : SelfAssessmentService,
     override val authConnector: AuthConnector
 )(implicit appConfig: AppConfig, ec: ExecutionContext)
     extends BackendController(cc)
     with AuthorisedFunctions {
 
-  def authorisedAction(utr: String): ActionBuilder[RequestData, AnyContent] =
-    new ActionBuilder[RequestData, AnyContent] {
-      override def parser: BodyParser[AnyContent] = cc.parsers.defaultBodyParser
-
-      override protected def executionContext: ExecutionContext = cc.executionContext
-
-      override def invokeBlock[A](
-          request: Request[A],
-          block: RequestData[A] => Future[Result]
-      ): Future[Result] = {
-        implicit val headerCarrier: HeaderCarrier = hc(request)
-
+  def authorisedAction(utr: String)(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent] = {
+    Action.async(cc.parsers.anyContent) { request =>
+      implicit val headerCarrier: HeaderCarrier = hc(request)
+    
         authorised(selfAssessmentEnrolments(utr)) {
-          block(RequestData(utr, None, request))
+          Future.successful(Right(RequestData(utr, None, request)))
         }
           .recoverWith { case _: AuthorisationException =>
-            val mtdId: Future[String] = ???
-            mtdId.flatMap { id =>
+            selfAssessmentService.getMtdIdFromUtr(utr).flatMap { id =>
               authorised(checkForMtdEnrolment(id)).retrieve(affinityGroup) {
                 case Some(Individual) =>
-                  block(RequestData(utr, None, request))
-                case Some(Organisation)=>
-                  block(RequestData(utr, None, request))
-                case Some(Agent)=>
+                  Future.successful(Right(RequestData(utr, None, request)))
+                case Some(Organisation) =>
+                  Future.successful(Right(RequestData(utr, None, request)))
+                case Some(Agent) =>
                   authorised(agentDelegatedEnrolments(utr, id)) {
-                    block(RequestData(utr, None, request))
+                    Future.successful(Right(RequestData(utr, None, request)))
                   }
-                case _ => Future.failed(ApiErrorResponses.apply(500, "unsupported affinity group"))
+                case _ => Future.successful(Left(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "unsupported affinity group").asJson)))
               }
+            }.recoverWith {
+              case _: ApiErrorResponses => Future.successful(Left(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "unsupported affinity group").asJson)))
             }
-          }
-      }
+          }.flatMap {
+          case Right(requestData) => block(requestData)
+          case Left(result) => Future.successful(result)
+        }
+    }
+  }
 
       private def selfAssessmentEnrolments(utr: String): Predicate = {
         (Individual and Enrolment("IR-SA").withIdentifier("UTR", utr)) or
@@ -87,7 +87,4 @@ class AuthenticateRequestController(
           .withDelegatedAuthRule("mtd-it-auth") or
           Enrolment("IR-SA").withIdentifier("UTR", utr).withDelegatedAuthRule("sa-auth")
       }
-    }
-
-  object AuthenticateRequestController {}
 }

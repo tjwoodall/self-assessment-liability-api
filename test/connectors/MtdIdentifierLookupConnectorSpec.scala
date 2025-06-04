@@ -36,11 +36,11 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
   private val mtdId: MtdId = MtdId("MtdItId")
   private val successResponse: String = Json.obj("mtdbsa" -> "MtdItId").toString
   private val badRequestResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    status = 400,
+    errorType = 400,
     message = "Invalid national insurance number returned from citizen details"
   )
   private val internalServerErrorResponse: ApiErrorResponses =
-    ApiErrorResponses.apply(status = 500, message = "Service currently unavailable")
+    ApiErrorResponses.apply(errorType = 500, message = "Service currently unavailable")
 
   "getMtdId" should {
     "return mtd ID associated with the nino if 200 response is received" in {

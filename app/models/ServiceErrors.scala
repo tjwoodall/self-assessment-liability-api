@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 HM Revenue & Customs
+ * Copyright 2025 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 
-package utils
+package models
 
-import shared.SpecBase
-import models.ServiceErrors.Downstream_Error
-import utils.FutureConverter.FutureOps
+sealed abstract class ServiceErrors extends Throwable{
+override def toString :String = this.toString.replace("$", "")
+}
 
-class FutureConverterSpec extends SpecBase {
-
-  val test: String = "success"
-  "wrap any type in a successful future" in {
-    test.toFuture.futureValue mustEqual test
-  }
-  "mytest here" in {
-    Downstream_Error.toString mustEqual "Downstream_Error"
-  }
-
+object ServiceErrors {
+  case object Downstream_Error extends ServiceErrors
+  case object Invalid_SAUTR extends ServiceErrors
+  case object Invalid_NINO extends ServiceErrors
+  case object More_Than_One_NINO_Found_For_SAUTR extends ServiceErrors
+  case object No_NINO_Found_For_SAUTR extends ServiceErrors
 }

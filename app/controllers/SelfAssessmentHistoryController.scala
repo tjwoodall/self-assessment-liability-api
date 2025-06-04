@@ -19,18 +19,20 @@ package controllers
 import config.AppConfig
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import services.SelfAssessmentService
 import uk.gov.hmrc.auth.core.AuthConnector
 
 import javax.inject.Inject
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentHistoryController @Inject()(
                                                 override val authConnector: AuthConnector,
+                                                val service: SelfAssessmentService,
                                                 cc: ControllerComponents
-                                               )(implicit appConfig: AppConfig, ec: ExecutionContext) extends AuthenticateRequestController(cc,authConnector) {
+                                               )(implicit appConfig: AppConfig, ec: ExecutionContext) extends AuthenticateRequestController(cc,service, authConnector) {
 
   def getYourSelfAssessmentData(utr: String): Action[AnyContent] = authorisedAction(utr) { implicit request =>
-    Ok(Json.obj("message" -> "Success!"))
+    Future.successful(Ok(Json.obj("message" -> "Success!")))
   }
 
 }

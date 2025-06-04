@@ -48,15 +48,15 @@ class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
   }
   """
   private val badRequestResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    status = 400,
+    errorType = 400,
     message = "Invalid SaUtr."
   )
   private val notFoundResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    status = 404,
+    errorType = 404,
     message = "No record for the given SaUtr is found."
   )
   private val internalServerErrorResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    status = 500,
+    errorType = 500,
     message = "More than one valid matching result."
   )
 
@@ -85,7 +85,7 @@ class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
       simmulateGet(serviceUrl("invalidUtr"), IM_A_TEAPOT, "")
       val result = connector.getNino("invalidUtr")
       result.failed.futureValue mustBe ApiErrorResponses.apply(
-        status = 500,
+        errorType = 500,
         message = "Service currently unavailable"
       )
     }
