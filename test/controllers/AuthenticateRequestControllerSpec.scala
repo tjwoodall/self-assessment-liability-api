@@ -49,7 +49,6 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
       authentication: AuthenticateRequestController
   ): Action[AnyContent] = authentication
     .authorisedAction(utr)(_ => Future.successful(Results.Ok))
-  
 
   "AuthenticateRequestController" when {
     "user is an individual" should {
