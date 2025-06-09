@@ -59,11 +59,11 @@ class AuthenticateRequestController(
                   block(RequestData(utr, None, request))
                 case Some(Agent) =>
                   if(appConfig.agentsAllowed){
+
                     authorised(agentDelegatedEnrolments(utr, mtdId)) {
                       block(RequestData(utr, None, request))
                     }.recoverWith{
                       case _: AuthorisationException =>Future.successful(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "agent/client handshake was not established").asJson))
-                      case error => Future.successful(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "auth returned an error of some kind").asJson))
                     }
                   } else{
                     Future.successful(Unauthorized(ApiErrorResponses(Not_Allowed.toString, "Agents are currently not supported by our service").asJson))
@@ -72,10 +72,9 @@ class AuthenticateRequestController(
                 case _ => Future.successful(InternalServerError(ApiErrorResponses(Not_Allowed.toString, "unsupported affinity group").asJson))
               }.recoverWith{
                 case _: AuthorisationException =>Future.successful(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "user didnt have any of the self assessment enrolments").asJson))
-                case error => Future.successful(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "auth returned an error of some kind").asJson))
               }
             }.recoverWith {
-              case More_Than_One_NINO_Found_For_SAUTR => Future.successful(InternalServerError(ApiErrorResponses(More_Than_One_NINO_Found_For_SAUTR.toString, "more than one nino found").asJson))
+              case error => Future.successful(InternalServerError(ApiErrorResponses(More_Than_One_NINO_Found_For_SAUTR.toString, "more than one nino found").asJson))
             }
             case error => Future.successful(InternalServerError(ApiErrorResponses(Downstream_Error.toString, "auth returned an error of some kind").asJson))
           }
@@ -90,7 +89,7 @@ class AuthenticateRequestController(
       private def checkForMtdEnrolment(mtdId: String): Predicate = {
         (Individual and Enrolment(Mtd_Enrolment_Key).withIdentifier(Mtd_Identifier, mtdId)) or
           (Organisation and Enrolment(Mtd_Enrolment_Key).withIdentifier(Mtd_Identifier, mtdId)) or
-          (Agent and Enrolment("HMRC-AS-AGENT"))
+          (Agent and Enrolment(ASA_Enrolment_Key))
       }
 
       private def agentDelegatedEnrolments(utr: String, mtdId: String): Predicate = {
