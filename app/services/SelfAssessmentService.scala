@@ -23,13 +23,13 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentService @Inject() (
-              val cidConncetor: CitizenDetailsConnector,
-              mtdConnector: MtdIdentifierLookupConnector
-              )(implicit ec: ExecutionContext) {
-        def getMtdIdFromUtr(utr:String)(implicit hc:HeaderCarrier): Future[String] ={
-          for {
-            nino <- cidConncetor.getNino(utr)
-            mtdId <- mtdConnector.getMtdId(nino)
-          } yield mtdId.mtdbsa
-        }
+    val cidConncetor: CitizenDetailsConnector,
+    mtdConnector: MtdIdentifierLookupConnector
+)(implicit ec: ExecutionContext) {
+  def getMtdIdFromUtr(utr: String)(implicit hc: HeaderCarrier): Future[String] = {
+    for {
+      nino <- cidConncetor.getNino(utr)
+      mtdId <- mtdConnector.getMtdId(nino)
+    } yield mtdId.mtdbsa
+  }
 }

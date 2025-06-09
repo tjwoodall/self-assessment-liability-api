@@ -18,7 +18,7 @@ package connectors
 
 import config.AppConfig
 import models.ServiceErrors.{Downstream_Error, Invalid_NINO}
-import models.{ApiErrorResponses, MtdId, ServiceErrors}
+import models.{MtdId, ServiceErrors}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}

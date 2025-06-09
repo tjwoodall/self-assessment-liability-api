@@ -16,7 +16,7 @@
 
 package models
 
-sealed abstract class ServiceErrors extends Throwable{
+sealed abstract class ServiceErrors extends Throwable {
   override def toString: String = getClass.getSimpleName.replace("$", "")
 }
 

@@ -18,4 +18,5 @@ package models
 
 import play.api.mvc.{Request, WrappedRequest}
 
-case class RequestData[A](utr:String, nino:Option[String], request:Request[A]) extends WrappedRequest[A](request)
+case class RequestData[A](utr: String, nino: Option[String], request: Request[A])
+    extends WrappedRequest[A](request)

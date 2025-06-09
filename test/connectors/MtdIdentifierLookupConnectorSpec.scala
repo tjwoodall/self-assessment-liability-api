@@ -16,9 +16,8 @@
 
 package connectors
 
-import connectors.MtdIdentifierLookupConnector
+import models.MtdId
 import models.ServiceErrors.{Downstream_Error, Invalid_NINO}
-import models.{ApiErrorResponses, MtdId}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json

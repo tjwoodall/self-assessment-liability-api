@@ -16,7 +16,6 @@
 
 package connectors
 
-import models.ApiErrorResponses
 import models.ServiceErrors.{
   Downstream_Error,
   Invalid_SAUTR,

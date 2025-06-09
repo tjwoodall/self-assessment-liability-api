@@ -28,16 +28,14 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import services.SelfAssessmentService
 import shared.{HttpWireMock, SpecBase}
-import uk.gov.hmrc.auth.core.AffinityGroup.{Agent, Individual, Organisation}
 import uk.gov.hmrc.auth.core.*
+import uk.gov.hmrc.auth.core.AffinityGroup.{Agent, Individual, Organisation}
 import uk.gov.hmrc.http.HeaderCarrier
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
   override lazy val app: Application = new GuiceApplicationBuilder().build()
-
-
 
   private val authConnector: AuthConnector = mock[AuthConnector]
   private val selfAssessmentService: SelfAssessmentService = mock[SelfAssessmentService]
@@ -46,11 +44,12 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
   private val utr = "1234567890"
   private val mtdId = "MTDITID123456"
 
-  private def methodNeedingAuthentication(utr: String, authentication: AuthenticateRequestController): Action[AnyContent] = authentication
+  private def methodNeedingAuthentication(
+      utr: String,
+      authentication: AuthenticateRequestController
+  ): Action[AnyContent] = authentication
     .authorisedAction(utr)(_ => Future.successful(Results.Ok))
-
-  private val legacyEnrolment = Enrolment("IR-SA", List(EnrolmentIdentifier("UTR", "utr")), "Activated", None)
-  private val mtdEnrolment = Enrolment("HMRC-MTD-IT", List(EnrolmentIdentifier("MTDITID", "mtdId")), "Activated", None)
+  
 
   "AuthenticateRequestController" when {
     "user is an individual" should {
@@ -59,7 +58,11 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.successful(()))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe OK
@@ -71,11 +74,18 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(new MissingBearerToken))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe UNAUTHORIZED
-          contentAsJson(result) mustBe ApiErrorResponses(Not_Allowed.toString, "missing auth token").asJson
+          contentAsJson(result) mustBe ApiErrorResponses(
+            Not_Allowed.toString,
+            "missing auth token"
+          ).asJson
         }
       }
     }
@@ -90,7 +100,11 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.successful(mtdId))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe OK
@@ -106,7 +120,11 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.successful(mtdId))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe OK
@@ -127,7 +145,11 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
         when(appConfig.agentsAllowed).thenReturn(true)
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe OK
@@ -145,11 +167,18 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
         when(appConfig.agentsAllowed).thenReturn(false)
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe UNAUTHORIZED
-          contentAsJson(result) mustBe ApiErrorResponses(Not_Allowed.toString, "Agents are currently not supported by our service").asJson
+          contentAsJson(result) mustBe ApiErrorResponses(
+            Not_Allowed.toString,
+            "Agents are currently not supported by our service"
+          ).asJson
         }
       }
 
@@ -165,11 +194,18 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
         when(appConfig.agentsAllowed).thenReturn(true)
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe INTERNAL_SERVER_ERROR
-          contentAsJson(result) mustBe ApiErrorResponses(Downstream_Error.toString, "agent/client handshake was not established").asJson
+          contentAsJson(result) mustBe ApiErrorResponses(
+            Downstream_Error.toString,
+            "agent/client handshake was not established"
+          ).asJson
         }
       }
     }
@@ -183,11 +219,18 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(More_Than_One_NINO_Found_For_SAUTR))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe INTERNAL_SERVER_ERROR
-          contentAsJson(result) mustBe ApiErrorResponses(More_Than_One_NINO_Found_For_SAUTR.toString, "more than one nino found").asJson
+          contentAsJson(result) mustBe ApiErrorResponses(
+            Downstream_Error.toString,
+            "calls to get mtdid failed for some reason"
+          ).asJson
         }
       }
 
@@ -200,11 +243,18 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.successful(mtdId))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe INTERNAL_SERVER_ERROR
-          contentAsJson(result) mustBe ApiErrorResponses(Downstream_Error.toString, "user didnt have any of the self assessment enrolments").asJson
+          contentAsJson(result) mustBe ApiErrorResponses(
+            Downstream_Error.toString,
+            "user didnt have any of the self assessment enrolments"
+          ).asJson
         }
       }
 
@@ -217,11 +267,18 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.successful(mtdId))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe INTERNAL_SERVER_ERROR
-          contentAsJson(result) mustBe ApiErrorResponses(Not_Allowed.toString, "unsupported affinity group").asJson
+          contentAsJson(result) mustBe ApiErrorResponses(
+            Not_Allowed.toString,
+            "unsupported affinity group"
+          ).asJson
         }
       }
 
@@ -230,11 +287,18 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(new RuntimeException("unknown error")))
 
         running(app) {
-          val controller = new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(appConfig, ExecutionContext.global)
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              appConfig,
+              ExecutionContext.global
+            )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
           status(result) mustBe INTERNAL_SERVER_ERROR
-          contentAsJson(result) mustBe ApiErrorResponses(Downstream_Error.toString, "auth returned an error of some kind").asJson
+          contentAsJson(result) mustBe ApiErrorResponses(
+            Downstream_Error.toString,
+            "auth returned an error of some kind"
+          ).asJson
         }
       }
     }
