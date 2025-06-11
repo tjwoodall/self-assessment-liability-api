@@ -17,14 +17,14 @@
 package connectors
 
 import config.AppConfig
-import models.ApiErrorResponses
-
-import javax.inject.Inject
-import scala.concurrent.{ExecutionContext, Future}
+import models.ServiceErrors.*
 import play.api.libs.json.JsValue
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
+
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 
 class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
   def getNino(utr: String)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[String] = {
@@ -36,31 +36,19 @@ class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppCon
           Future.successful((response.json \ "ids" \ "nino").as[String])
         case response if response.status == 400 =>
           Future.failed(
-            ApiErrorResponses.apply(
-              status = 400,
-              message = "Invalid SaUtr."
-            )
+            Invalid_SAUTR
           )
         case response if response.status == 404 =>
           Future.failed(
-            ApiErrorResponses.apply(
-              status = 404,
-              message = "No record for the given SaUtr is found."
-            )
+            No_NINO_Found_For_SAUTR
           )
         case response if response.status == 500 =>
           Future.failed(
-            ApiErrorResponses.apply(
-              status = 500,
-              message = "More than one valid matching result."
-            )
+            More_Than_One_NINO_Found_For_SAUTR
           )
         case _ =>
           Future.failed(
-            ApiErrorResponses.apply(
-              status = 500,
-              message = "Service currently unavailable"
-            )
+            Downstream_Error
           )
       }
   }

@@ -16,7 +16,7 @@ lazy val microservice = Project("self-assessment-liability-api", file("."))
   .settings(
     Compile / unmanagedResourceDirectories += baseDirectory.value / "resources",
   )
-
+  .settings(PlayKeys.playDefaultPort := 49094)
 lazy val it = project
   .enablePlugins(PlayScala)
   .dependsOn(microservice % "test->test")

@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-package config
+package services
 
-import javax.inject.{Inject, Singleton}
-import play.api.Configuration
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+import connectors.{CitizenDetailsConnector, MtdIdentifierLookupConnector}
+import uk.gov.hmrc.http.HeaderCarrier
 
-@Singleton
-class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig) {
+import javax.inject.Inject
+import scala.concurrent.{ExecutionContext, Future}
 
-  val citizenDetailsLookup: String = servicesConfig.baseUrl("citizen-details")
-  val mtdIdLookup: String = servicesConfig.baseUrl("mtd-id-lookup")
-
-  val appName: String = config.get[String]("appName")
-  val agentsAllowed: Boolean = config.get[Boolean]("agentAccess")
+class SelfAssessmentService @Inject() (
+    val cidConncetor: CitizenDetailsConnector,
+    mtdConnector: MtdIdentifierLookupConnector
+)(implicit ec: ExecutionContext) {
+  def getMtdIdFromUtr(utr: String)(implicit hc: HeaderCarrier): Future[String] = {
+    for {
+      nino <- cidConncetor.getNino(utr)
+      mtdId <- mtdConnector.getMtdId(nino)
+    } yield mtdId.mtdbsa
+  }
 }

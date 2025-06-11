@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 HM Revenue & Customs
+ * Copyright 2025 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,15 @@
  * limitations under the License.
  */
 
-package utils
+package utils.constants
 
-import shared.SpecBase
-import models.ServiceErrors.Downstream_Error
-import utils.FutureConverter.FutureOps
-
-class FutureConverterSpec extends SpecBase {
-
-  val test: String = "success"
-  "wrap any type in a successful future" in {
-    test.toFuture.futureValue mustEqual test
-  }
-  "mytest here" in {
-    Downstream_Error.toString mustEqual "Downstream_Error"
-  }
+object EnrolmentConstants {
+  val IR_SA_Enrolment_Key = "IR-SA"
+  val IR_SA_Identifier = "UTR"
+  val IR_SA_Delegated_Auth_Rule = "sa-auth"
+  val Mtd_Enrolment_Key = "HMRC-MTD-IT"
+  val Mtd_Identifier = "MTDITID"
+  val Mtd_Delegated_Auth_Rule = "mtd-it-auth"
+  val ASA_Enrolment_Key = "HMRC-AS-AGENT"
 
 }

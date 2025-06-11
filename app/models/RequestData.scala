@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 HM Revenue & Customs
+ * Copyright 2025 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,9 @@
  * limitations under the License.
  */
 
-package utils
+package models
 
-import shared.SpecBase
-import models.ServiceErrors.Downstream_Error
-import utils.FutureConverter.FutureOps
+import play.api.mvc.{Request, WrappedRequest}
 
-class FutureConverterSpec extends SpecBase {
-
-  val test: String = "success"
-  "wrap any type in a successful future" in {
-    test.toFuture.futureValue mustEqual test
-  }
-  "mytest here" in {
-    Downstream_Error.toString mustEqual "Downstream_Error"
-  }
-
-}
+case class RequestData[A](utr: String, nino: Option[String], request: Request[A])
+    extends WrappedRequest[A](request)

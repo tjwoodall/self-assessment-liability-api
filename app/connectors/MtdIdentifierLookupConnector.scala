@@ -17,7 +17,8 @@
 package connectors
 
 import config.AppConfig
-import models.{ApiErrorResponses, MtdId}
+import models.ServiceErrors.{Downstream_Error, Invalid_NINO}
+import models.{MtdId, ServiceErrors}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
@@ -34,15 +35,10 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
       .flatMap {
         case response if response.status == 200 => response.json.as[MtdId].toFuture
         case response if response.status == 400 =>
-          Future.failed(
-            ApiErrorResponses.apply(
-              status = 400,
-              message = "Invalid national insurance number returned from citizen details"
-            )
-          )
+          Future.failed(Invalid_NINO)
         case _ =>
           Future.failed(
-            ApiErrorResponses.apply(status = 500, message = "Service currently unavailable")
+            Downstream_Error
           )
       }
   }

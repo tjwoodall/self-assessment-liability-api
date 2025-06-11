@@ -16,11 +16,16 @@
 
 package connectors
 
-import models.ApiErrorResponses
-import shared.{HttpWireMock, SpecBase}
+import models.ServiceErrors.{
+  Downstream_Error,
+  Invalid_SAUTR,
+  More_Than_One_NINO_Found_For_SAUTR,
+  No_NINO_Found_For_SAUTR
+}
 import play.api.Application
-import play.api.http.Status.{BAD_REQUEST, IM_A_TEAPOT, INTERNAL_SERVER_ERROR, NOT_FOUND, OK}
+import play.api.http.Status.*
 import play.api.inject.guice.GuiceApplicationBuilder
+import shared.{HttpWireMock, SpecBase}
 
 class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
   override lazy val app: Application = new GuiceApplicationBuilder()
@@ -47,47 +52,32 @@ class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
     "dateOfBirth": "11121971"
   }
   """
-  private val badRequestResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    status = 400,
-    message = "Invalid SaUtr."
-  )
-  private val notFoundResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    status = 404,
-    message = "No record for the given SaUtr is found."
-  )
-  private val internalServerErrorResponse: ApiErrorResponses = ApiErrorResponses.apply(
-    status = 500,
-    message = "More than one valid matching result."
-  )
 
   "CitizenDetailsConnector" should {
-    "return nino when the backend returns status 200 and all expected" in {
+    "return nino in case of a 200 response" in {
       simmulateGet(serviceUrl("utr"), OK, validSuccessResponse)
       val result = connector.getNino("utr")
       result.futureValue mustBe nino
     }
-    "return Error when the backend returns status 400" in {
+    "return Invalid_SAUTR in case of a 400 response" in {
       simmulateGet(serviceUrl("invalidUtr"), BAD_REQUEST, "")
       val result = connector.getNino("invalidUtr")
-      result.failed.futureValue mustBe badRequestResponse
+      result.failed.futureValue mustBe Invalid_SAUTR
     }
-    "return Error when the backend returns status 404" in {
+    "return No_NINO_Found_For_SAUTR in case of a 404 response" in {
       simmulateGet(serviceUrl("invalidUtr"), NOT_FOUND, "")
       val result = connector.getNino("invalidUtr")
-      result.failed.futureValue mustBe notFoundResponse
+      result.failed.futureValue mustBe No_NINO_Found_For_SAUTR
     }
-    "return Error when the backend returns status 500" in {
+    "return More_Than_One_NINO_Found_For_SAUTR in case of a 500 response" in {
       simmulateGet(serviceUrl("invalidUtr"), INTERNAL_SERVER_ERROR, "")
       val result = connector.getNino("invalidUtr")
-      result.failed.futureValue mustBe internalServerErrorResponse
+      result.failed.futureValue mustBe More_Than_One_NINO_Found_For_SAUTR
     }
-    "return Error when the backend returns any other status" in {
+    "return Downstream_Error in case of any other responses" in {
       simmulateGet(serviceUrl("invalidUtr"), IM_A_TEAPOT, "")
       val result = connector.getNino("invalidUtr")
-      result.failed.futureValue mustBe ApiErrorResponses.apply(
-        status = 500,
-        message = "Service currently unavailable"
-      )
+      result.failed.futureValue mustBe Downstream_Error
     }
   }
 }
