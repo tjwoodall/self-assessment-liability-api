@@ -51,11 +51,14 @@ class AuthenticateRequestController(
       implicit val headerCarrier: HeaderCarrier = hc(request)
 
       authorised(selfAssessmentEnrolments(utr))
-        .retrieve(confidenceLevel) {
-          case userConfidence if userConfidence.level >= minimumConfidence.level =>
-            block(RequestData(utr, None, request))
-          case _ =>
+        .retrieve(affinityGroup and confidenceLevel) {
+          case enrolments ~ userConfidence
+              if enrolments.contains(
+                Individual
+              ) && userConfidence.level < minimumConfidence.level =>
             lowConfidenceResult()
+          case _ =>
+            block(RequestData(utr, None, request))
         }
         .recoverWith {
           case _: MissingBearerToken =>
@@ -69,7 +72,11 @@ class AuthenticateRequestController(
                 authorised(checkForMtdEnrolment(mtdId))
                   .retrieve(affinityGroup and confidenceLevel) {
                     case enrolments ~ userConfidence
-                        if userConfidence.level >= minimumConfidence.level =>
+                        if enrolments.contains(
+                          Individual
+                        ) && userConfidence.level < minimumConfidence.level =>
+                      lowConfidenceResult()
+                    case enrolments ~ _ =>
                       enrolments match {
                         case Some(Individual) =>
                           block(RequestData(utr, None, request))
@@ -111,8 +118,6 @@ class AuthenticateRequestController(
                             )
                           )
                       }
-                    case _ =>
-                      lowConfidenceResult()
                   }
                   .recoverWith { case _: AuthorisationException =>
                     Future.successful(
