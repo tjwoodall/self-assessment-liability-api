@@ -175,7 +175,7 @@ class AuthenticateRequestController(
 
   private def lowConfidenceResult(): Future[Result] = {
     Future.successful(
-      BadRequest(
+      Unauthorized(
         ApiErrorResponses(
           Low_Confidence.toString,
           "user confidence level is too low"

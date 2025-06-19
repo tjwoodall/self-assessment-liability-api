@@ -114,7 +114,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
         }
       }
 
-      "return BadRequest for Individual with low user confidence level" in {
+      "return Unauthorized for Individual with low user confidence level" in {
         when(authConnector.authorise(any(), any())(any(), any()))
           .thenReturn(Future.successful(Some(Individual) and lowConfidence))
 
@@ -129,7 +129,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
             )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
-          status(result) mustBe BAD_REQUEST
+          status(result) mustBe UNAUTHORIZED
           contentAsJson(result) mustBe ApiErrorResponses(
             Low_Confidence.toString,
             "user confidence level is too low"
@@ -179,7 +179,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
         }
       }
 
-      "return BadRequest for Individual with low user confidence level" in {
+      "return Unauthorized for Individual with low user confidence level" in {
         when(authConnector.authorise(any(), any())(any(), any()))
           .thenReturn(Future.failed(new AuthorisationException("not authorised") {}))
           .thenReturn(Future.successful(Some(Individual) and lowConfidence))
@@ -195,7 +195,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
             )
           val result = methodNeedingAuthentication(utr, controller)(FakeRequest())
 
-          status(result) mustBe BAD_REQUEST
+          status(result) mustBe UNAUTHORIZED
           contentAsJson(result) mustBe ApiErrorResponses(
             Low_Confidence.toString,
             "user confidence level is too low"
