@@ -84,7 +84,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
     "user has legacy enrolment" should {
       "authenticate the provided utr for Individual affinity group" in {
         when(authConnector.authorise(any(), any())(any(), any()))
-          .thenReturn(Future.successful(Some(Individual) and minimumConfidence))
+          .thenReturn(Future.successful(()))
 
         running(app) {
           val controller =
@@ -100,7 +100,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
 
       "authenticate the provided utr for Organisation affinity group" in {
         when(authConnector.authorise(any(), any())(any(), any()))
-          .thenReturn(Future.successful(Some(Organisation) and lowConfidence))
+          .thenReturn(Future.successful(()))
 
         running(app) {
           val controller =
@@ -116,7 +116,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
 
       "return BadRequest for Individual with low user confidence level" in {
         when(authConnector.authorise(any(), any())(any(), any()))
-          .thenReturn(Future.successful(Some(Individual) and lowConfidence))
+          .thenReturn(Future.successful(()))
 
         when(selfAssessmentService.getMtdIdFromUtr(eqTo(utr))(any[HeaderCarrier]))
           .thenReturn(Future.successful(mtdId))
