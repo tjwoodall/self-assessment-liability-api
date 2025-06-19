@@ -42,15 +42,24 @@ class AuthenticateRequestController(
     extends BackendController(cc)
     with AuthorisedFunctions {
 
+  private val minimumConfidence = ConfidenceLevel.L250
+
   def authorisedAction(
       utr: String
   )(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent] = {
     Action.async(cc.parsers.anyContent) { request =>
       implicit val headerCarrier: HeaderCarrier = hc(request)
 
-      authorised(selfAssessmentEnrolments(utr)) {
-        block(RequestData(utr, None, request))
-      }
+      authorised(selfAssessmentEnrolments(utr))
+        .retrieve(affinityGroup and confidenceLevel) {
+          case enrolments ~ userConfidence
+              if enrolments.contains(
+                Individual
+              ) && userConfidence.level < minimumConfidence.level =>
+            lowConfidenceResult()
+          case _ =>
+            block(RequestData(utr, None, request))
+        }
         .recoverWith {
           case _: MissingBearerToken =>
             Future.successful(
@@ -61,45 +70,54 @@ class AuthenticateRequestController(
               .getMtdIdFromUtr(utr)
               .flatMap { mtdId =>
                 authorised(checkForMtdEnrolment(mtdId))
-                  .retrieve(affinityGroup) {
-                    case Some(Individual) =>
-                      block(RequestData(utr, None, request))
-                    case Some(Organisation) =>
-                      block(RequestData(utr, None, request))
-                    case Some(Agent) =>
-                      if (appConfig.agentsAllowed) {
-
-                        authorised(agentDelegatedEnrolments(utr, mtdId)) {
+                  .retrieve(affinityGroup and confidenceLevel) {
+                    case enrolments ~ userConfidence
+                        if enrolments.contains(
+                          Individual
+                        ) && userConfidence.level < minimumConfidence.level =>
+                      lowConfidenceResult()
+                    case enrolments ~ _ =>
+                      enrolments match {
+                        case Some(Individual) =>
                           block(RequestData(utr, None, request))
-                        }.recoverWith { case _: AuthorisationException =>
+                        case Some(Organisation) =>
+                          block(RequestData(utr, None, request))
+                        case Some(Agent) =>
+                          if (appConfig.agentsAllowed) {
+
+                            authorised(agentDelegatedEnrolments(utr, mtdId)) {
+                              block(RequestData(utr, None, request))
+                            }.recoverWith { case _: AuthorisationException =>
+                              Future.successful(
+                                InternalServerError(
+                                  ApiErrorResponses(
+                                    Downstream_Error.toString,
+                                    "agent/client handshake was not established"
+                                  ).asJson
+                                )
+                              )
+                            }
+                          } else {
+                            Future.successful(
+                              Unauthorized(
+                                ApiErrorResponses(
+                                  Not_Allowed.toString,
+                                  "Agents are currently not supported by our service"
+                                ).asJson
+                              )
+                            )
+                          }
+
+                        case _ =>
                           Future.successful(
                             InternalServerError(
                               ApiErrorResponses(
-                                Downstream_Error.toString,
-                                "agent/client handshake was not established"
+                                Not_Allowed.toString,
+                                "unsupported affinity group"
                               ).asJson
                             )
                           )
-                        }
-                      } else {
-                        Future.successful(
-                          Unauthorized(
-                            ApiErrorResponses(
-                              Not_Allowed.toString,
-                              "Agents are currently not supported by our service"
-                            ).asJson
-                          )
-                        )
                       }
-                    case _ =>
-                      Future.successful(
-                        InternalServerError(
-                          ApiErrorResponses(
-                            Not_Allowed.toString,
-                            "unsupported affinity group"
-                          ).asJson
-                        )
-                      )
                   }
                   .recoverWith { case _: AuthorisationException =>
                     Future.successful(
@@ -136,22 +154,12 @@ class AuthenticateRequestController(
   }
 
   private def selfAssessmentEnrolments(utr: String): Predicate = {
-    (Individual and (ConfidenceLevel.L250 or ConfidenceLevel.L500 or ConfidenceLevel.L600) and Enrolment(
-      IR_SA_Enrolment_Key
-    ).withIdentifier(
-      IR_SA_Identifier,
-      utr
-    )) or
+    (Individual and Enrolment(IR_SA_Enrolment_Key).withIdentifier(IR_SA_Identifier, utr)) or
       (Organisation and Enrolment(IR_SA_Enrolment_Key).withIdentifier(IR_SA_Identifier, utr))
   }
 
   private def checkForMtdEnrolment(mtdId: String): Predicate = {
-    (Individual and (ConfidenceLevel.L250 or ConfidenceLevel.L500 or ConfidenceLevel.L600) and Enrolment(
-      Mtd_Enrolment_Key
-    ).withIdentifier(
-      Mtd_Identifier,
-      mtdId
-    )) or
+    (Individual and Enrolment(Mtd_Enrolment_Key).withIdentifier(Mtd_Identifier, mtdId)) or
       (Organisation and Enrolment(Mtd_Enrolment_Key).withIdentifier(Mtd_Identifier, mtdId)) or
       (Agent and Enrolment(ASA_Enrolment_Key))
   }
@@ -163,5 +171,16 @@ class AuthenticateRequestController(
       Enrolment(IR_SA_Enrolment_Key)
         .withIdentifier(IR_SA_Identifier, utr)
         .withDelegatedAuthRule(IR_SA_Delegated_Auth_Rule)
+  }
+
+  private def lowConfidenceResult(): Future[Result] = {
+    Future.successful(
+      BadRequest(
+        ApiErrorResponses(
+          Low_Confidence.toString,
+          "user confidence level is too low"
+        ).asJson
+      )
+    )
   }
 }
