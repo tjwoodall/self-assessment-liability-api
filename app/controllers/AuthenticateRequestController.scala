@@ -52,11 +52,9 @@ class AuthenticateRequestController(
 
       authorised(selfAssessmentEnrolments(utr))
         .retrieve(affinityGroup and confidenceLevel) {
-          case enrolments ~ userConfidence
-              if enrolments.contains(
-                Individual
-              ) && userConfidence.level < minimumConfidence.level =>
-            lowConfidenceResult()
+          case Some(Individual) ~ userConfidence
+              if userConfidence.level < minimumConfidence.level =>
+            lowConfidenceResult
           case _ =>
             block(RequestData(utr, None, request))
         }
@@ -71,53 +69,46 @@ class AuthenticateRequestController(
               .flatMap { mtdId =>
                 authorised(checkForMtdEnrolment(mtdId))
                   .retrieve(affinityGroup and confidenceLevel) {
-                    case enrolments ~ userConfidence
-                        if enrolments.contains(
-                          Individual
-                        ) && userConfidence.level < minimumConfidence.level =>
-                      lowConfidenceResult()
-                    case enrolments ~ _ =>
-                      enrolments match {
-                        case Some(Individual) =>
+                    case Some(Individual) ~ userConfidence
+                        if userConfidence.level < minimumConfidence.level =>
+                      lowConfidenceResult
+                    case Some(Individual) ~ _ =>
+                      block(RequestData(utr, None, request))
+                    case Some(Organisation) ~ _ =>
+                      block(RequestData(utr, None, request))
+                    case Some(Agent) ~ _ =>
+                      if (appConfig.agentsAllowed) {
+                        authorised(agentDelegatedEnrolments(utr, mtdId)) {
                           block(RequestData(utr, None, request))
-                        case Some(Organisation) =>
-                          block(RequestData(utr, None, request))
-                        case Some(Agent) =>
-                          if (appConfig.agentsAllowed) {
-
-                            authorised(agentDelegatedEnrolments(utr, mtdId)) {
-                              block(RequestData(utr, None, request))
-                            }.recoverWith { case _: AuthorisationException =>
-                              Future.successful(
-                                InternalServerError(
-                                  ApiErrorResponses(
-                                    Downstream_Error.toString,
-                                    "agent/client handshake was not established"
-                                  ).asJson
-                                )
-                              )
-                            }
-                          } else {
-                            Future.successful(
-                              Unauthorized(
-                                ApiErrorResponses(
-                                  Not_Allowed.toString,
-                                  "Agents are currently not supported by our service"
-                                ).asJson
-                              )
-                            )
-                          }
-
-                        case _ =>
+                        }.recoverWith { case _: AuthorisationException =>
                           Future.successful(
                             InternalServerError(
                               ApiErrorResponses(
-                                Not_Allowed.toString,
-                                "unsupported affinity group"
+                                Downstream_Error.toString,
+                                "agent/client handshake was not established"
                               ).asJson
                             )
                           )
+                        }
+                      } else {
+                        Future.successful(
+                          Unauthorized(
+                            ApiErrorResponses(
+                              Not_Allowed.toString,
+                              "Agents are currently not supported by our service"
+                            ).asJson
+                          )
+                        )
                       }
+                    case _ =>
+                      Future.successful(
+                        InternalServerError(
+                          ApiErrorResponses(
+                            Not_Allowed.toString,
+                            "unsupported affinity group"
+                          ).asJson
+                        )
+                      )
                   }
                   .recoverWith { case _: AuthorisationException =>
                     Future.successful(
@@ -173,7 +164,7 @@ class AuthenticateRequestController(
         .withDelegatedAuthRule(IR_SA_Delegated_Auth_Rule)
   }
 
-  private def lowConfidenceResult(): Future[Result] = {
+  private val lowConfidenceResult: Future[Result] = {
     Future.successful(
       Unauthorized(
         ApiErrorResponses(
