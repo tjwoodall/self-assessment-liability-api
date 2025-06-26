@@ -17,14 +17,13 @@
 package controllers
 
 import config.AppConfig
-import models.ServiceErrors.{Downstream_Error, Not_Allowed, Low_Confidence}
+import models.ServiceErrors.{Downstream_Error, Not_Allowed}
 import models.{ApiErrorResponses, RequestData}
 import play.api.mvc.*
 import services.SelfAssessmentService
 import uk.gov.hmrc.auth.core.AffinityGroup.{Agent, Individual, Organisation}
 import uk.gov.hmrc.auth.core.authorise.Predicate
-import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{affinityGroup, confidenceLevel}
-import uk.gov.hmrc.auth.core.retrieve.~
+import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.affinityGroup
 import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -42,22 +41,15 @@ class AuthenticateRequestController(
     extends BackendController(cc)
     with AuthorisedFunctions {
 
-  private val minimumConfidence = ConfidenceLevel.L250
-
   def authorisedAction(
       utr: String
   )(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent] = {
     Action.async(cc.parsers.anyContent) { request =>
       implicit val headerCarrier: HeaderCarrier = hc(request)
 
-      authorised(selfAssessmentEnrolments(utr))
-        .retrieve(affinityGroup and confidenceLevel) {
-          case Some(Individual) ~ userConfidence
-              if userConfidence.level < minimumConfidence.level =>
-            lowConfidenceResult
-          case _ =>
-            block(RequestData(utr, None, request))
-        }
+      authorised(selfAssessmentEnrolments(utr)) {
+        block(RequestData(utr, None, request))
+      }
         .recoverWith {
           case _: MissingBearerToken =>
             Future.successful(
@@ -68,16 +60,14 @@ class AuthenticateRequestController(
               .getMtdIdFromUtr(utr)
               .flatMap { mtdId =>
                 authorised(checkForMtdEnrolment(mtdId))
-                  .retrieve(affinityGroup and confidenceLevel) {
-                    case Some(Individual) ~ userConfidence
-                        if userConfidence.level < minimumConfidence.level =>
-                      lowConfidenceResult
-                    case Some(Individual) ~ _ =>
+                  .retrieve(affinityGroup) {
+                    case Some(Individual) =>
                       block(RequestData(utr, None, request))
-                    case Some(Organisation) ~ _ =>
+                    case Some(Organisation) =>
                       block(RequestData(utr, None, request))
-                    case Some(Agent) ~ _ =>
+                    case Some(Agent) =>
                       if (appConfig.agentsAllowed) {
+
                         authorised(agentDelegatedEnrolments(utr, mtdId)) {
                           block(RequestData(utr, None, request))
                         }.recoverWith { case _: AuthorisationException =>
@@ -100,6 +90,7 @@ class AuthenticateRequestController(
                           )
                         )
                       }
+
                     case _ =>
                       Future.successful(
                         InternalServerError(
@@ -162,16 +153,5 @@ class AuthenticateRequestController(
       Enrolment(IR_SA_Enrolment_Key)
         .withIdentifier(IR_SA_Identifier, utr)
         .withDelegatedAuthRule(IR_SA_Delegated_Auth_Rule)
-  }
-
-  private val lowConfidenceResult: Future[Result] = {
-    Future.successful(
-      Unauthorized(
-        ApiErrorResponses(
-          Low_Confidence.toString,
-          "user confidence level is too low"
-        ).asJson
-      )
-    )
   }
 }
