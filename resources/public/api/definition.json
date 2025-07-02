@@ -1,11 +1,12 @@
 {
-  "scopes": [
-  ],
+  "scopes": [],
   "api": {
-    "name": "Self Assessment Liability API",
-    "description": "An API to retrieve Self Assessment Liability payment details.",
-    "context": "self-assessment-liability-api",
-    "categories": ["SELF_ASSESSMENT"],
+    "name": "View Self Assessment Account",
+    "description": "This API provides a breakdown of Self Assessment liability, showing overdue, payable and pending amounts, within HMRC tax account services.",
+    "context": "accounts/breakdown/self-assessment",
+    "categories": [
+      "SELF_ASSESSMENT"
+    ],
     "versions": [
       {
         "version": "1.0",
