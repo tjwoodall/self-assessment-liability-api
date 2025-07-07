@@ -17,7 +17,9 @@
 package controllers
 
 import config.AppConfig
-import play.api.libs.json.Json
+import connectors.HipConnector
+import models.ApiErrorResponses
+import models.ServiceErrors.*
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import services.SelfAssessmentService
 import uk.gov.hmrc.auth.core.AuthConnector
@@ -28,13 +30,69 @@ import scala.concurrent.{ExecutionContext, Future}
 class SelfAssessmentHistoryController @Inject() (
     override val authConnector: AuthConnector,
     val service: SelfAssessmentService,
+    val hipConnector: HipConnector,
     cc: ControllerComponents
 )(implicit appConfig: AppConfig, ec: ExecutionContext)
     extends AuthenticateRequestController(cc, service, authConnector) {
 
-  def getYourSelfAssessmentData(utr: String): Action[AnyContent] = authorisedAction(utr) {
-    implicit request =>
-      Future.successful(Ok(Json.obj("message" -> "Success!")))
-  }
+  private val badRequest = Future.successful(
+    BadRequest(
+      ApiErrorResponses(
+        "Bad Request",
+        "Invalid request format or parameters"
+      ).asJson
+    )
+  )
+  private val unauthorised = Future.successful(
+    Unauthorized(
+      ApiErrorResponses(
+        "Unauthorised",
+        "Invalid request format or parameters"
+      ).asJson
+    )
+  )
+  private val forbidden = Future.successful(
+    Forbidden(
+      ApiErrorResponses(
+        "Forbidden",
+        "Access not permitted"
+      ).asJson
+    )
+  )
+  private val internalError = Future.successful(
+    InternalServerError(
+      ApiErrorResponses(
+        "Internal Server Error",
+        "Unexpected internal error. Please try again later."
+      ).asJson
+    )
+  )
+  private val serviceUnavailable = Future.successful(
+    ServiceUnavailable(
+      ApiErrorResponses(
+        "Service Unavailable",
+        "Service unavailable. Pleased try again later"
+      ).asJson
+    )
+  )
 
+  def getYourSelfAssessmentData(utr: String, fromDate: String): Action[AnyContent] =
+    authorisedAction(utr) { implicit request =>
+      hipConnector
+        .getSelfAssessmentData(utr, fromDate)
+        .flatMap { jsValue =>
+          Future.successful(Ok(jsValue))
+        }
+        .recoverWith {
+          case _: Invalid_Correlation_Id.type    => internalError
+          case _: HIP_Unauthorised.type          => unauthorised
+          case _: HIP_Forbidden.type             => forbidden
+          case _: No_Payments_Found_For_UTR.type => badRequest
+          case _: Invalid_UTR.type               => internalError
+          case _: HIP_Server_Error.type          => internalError
+          case _: HIP_Bad_Gateway.type           => internalError
+          case _: HIP_Service_Unavailable.type   => serviceUnavailable
+          case _: Downstream_Error.type          => internalError
+        }
+    }
 }
