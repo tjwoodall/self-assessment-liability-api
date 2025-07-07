@@ -33,7 +33,9 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import services.SelfAssessmentService
 import shared.{HttpWireMock, SpecBase}
-import uk.gov.hmrc.auth.core.*
+import uk.gov.hmrc.auth.core.AffinityGroup.Individual
+import uk.gov.hmrc.auth.core.{AuthConnector, ConfidenceLevel}
+import uk.gov.hmrc.auth.core.syntax.retrieved.authSyntaxForRetrieved
 
 import scala.concurrent.Future
 
@@ -69,7 +71,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
 
   "SelfAssessmentHistoryControllerSpec" when {
     when(authConnector.authorise(any(), any())(any(), any()))
-      .thenReturn(Future.successful(()))
+      .thenReturn(Future.successful(Some(Individual) and ConfidenceLevel.L250))
 
     "getting self assessment data" should {
       "return details as JSON when successful" in {
