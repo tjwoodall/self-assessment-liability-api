@@ -17,7 +17,7 @@
 package controllers
 
 import config.AppConfig
-import models.ServiceErrors.{Downstream_Error, Not_Allowed, Low_Confidence}
+import models.ServiceErrors.{Downstream_Error, Low_Confidence, Not_Allowed}
 import models.{ApiErrorResponses, RequestData}
 import play.api.mvc.*
 import services.SelfAssessmentService
@@ -28,8 +28,10 @@ import uk.gov.hmrc.auth.core.retrieve.~
 import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import utils.UtrValidator
 import utils.constants.EnrolmentConstants.*
-
+import utils.constants.ErrorMessageConstansts.*
+import utils.FutureConverter.FutureOps
 import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -49,98 +51,50 @@ class AuthenticateRequestController(
   )(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent] = {
     Action.async(cc.parsers.anyContent) { request =>
       implicit val headerCarrier: HeaderCarrier = hc(request)
-
-      authorised(selfAssessmentEnrolments(utr))
-        .retrieve(affinityGroup and confidenceLevel) {
-          case Some(Individual) ~ userConfidence
+      val isUtrValid = UtrValidator.isValidUtr(utr)
+      if(isUtrValid){
+        authorised(selfAssessmentEnrolments(utr))
+          .retrieve(affinityGroup and confidenceLevel) {
+            case Some(Individual) ~ userConfidence
               if userConfidence.level < minimumConfidence.level =>
-            lowConfidenceResult
-          case _ =>
-            block(RequestData(utr, None, request))
-        }
-        .recoverWith {
-          case _: MissingBearerToken =>
-            Future.successful(
-              Unauthorized(ApiErrorResponses(Not_Allowed.toString, "missing auth token").asJson)
-            )
-          case _: AuthorisationException =>
-            selfAssessmentService
-              .getMtdIdFromUtr(utr)
-              .flatMap { mtdId =>
-                authorised(checkForMtdEnrolment(mtdId))
-                  .retrieve(affinityGroup and confidenceLevel) {
-                    case Some(Individual) ~ userConfidence
+             Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+            case _ =>
+              block(RequestData(utr, None, request))
+          }
+          .recoverWith {
+            case _: MissingBearerToken =>
+                BadRequest(ApiErrorResponses(badRequestMessage).asJson).toFuture
+            case _: AuthorisationException =>
+              selfAssessmentService.getMtdIdFromUtr(utr).flatMap { mtdId =>
+                  authorised(checkForMtdEnrolment(mtdId)).retrieve(affinityGroup and confidenceLevel) {
+                      case Some(Individual) ~ userConfidence
                         if userConfidence.level < minimumConfidence.level =>
-                      lowConfidenceResult
-                    case Some(Individual) ~ _ =>
-                      block(RequestData(utr, None, request))
-                    case Some(Organisation) ~ _ =>
-                      block(RequestData(utr, None, request))
-                    case Some(Agent) ~ _ =>
-                      if (appConfig.agentsAllowed) {
-                        authorised(agentDelegatedEnrolments(utr, mtdId)) {
-                          block(RequestData(utr, None, request))
-                        }.recoverWith { case _: AuthorisationException =>
-                          Future.successful(
-                            InternalServerError(
-                              ApiErrorResponses(
-                                Downstream_Error.toString,
-                                "agent/client handshake was not established"
-                              ).asJson
-                            )
-                          )
-                        }
-                      } else {
-                        Future.successful(
-                          Unauthorized(
-                            ApiErrorResponses(
-                              Not_Allowed.toString,
-                              "Agents are currently not supported by our service"
-                            ).asJson
-                          )
-                        )
-                      }
-                    case _ =>
-                      Future.successful(
-                        InternalServerError(
-                          ApiErrorResponses(
-                            Not_Allowed.toString,
-                            "unsupported affinity group"
-                          ).asJson
-                        )
-                      )
-                  }
-                  .recoverWith { case _: AuthorisationException =>
-                    Future.successful(
-                      InternalServerError(
-                        ApiErrorResponses(
-                          Downstream_Error.toString,
-                          "user didnt have any of the self assessment enrolments"
-                        ).asJson
-                      )
-                    )
-                  }
-              }
-              .recoverWith { case error =>
-                Future.successful(
-                  InternalServerError(
-                    ApiErrorResponses(
-                      Downstream_Error.toString,
-                      "calls to get mtdid failed for some reason"
-                    ).asJson
-                  )
-                )
-              }
-          case error =>
-            Future.successful(
-              InternalServerError(
-                ApiErrorResponses(
-                  Downstream_Error.toString,
-                  "auth returned an error of some kind"
-                ).asJson
-              )
-            )
-        }
+                       Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+                      case Some(Individual) ~ _ =>
+                        block(RequestData(utr, None, request))
+                      case Some(Organisation) ~ _ =>
+                        block(RequestData(utr, None, request))
+                      case Some(Agent) ~ _ =>
+                          authorised(agentDelegatedEnrolments(utr, mtdId)) {
+                            block(RequestData(utr, None, request))
+                          }.recover { case _: AuthorisationException =>
+                            InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson)
+                          }
+                    }
+                    .recover { case _: AuthorisationException =>
+                      InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson)
+                    }
+                }
+                .recover { case error =>
+                  InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson)
+                }
+            case error =>
+              InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+          } 
+        } else {
+        Future.successful(BadRequest(ApiErrorResponses(badRequestMessage).asJson))
+      }
+     
     }
   }
 
@@ -162,16 +116,5 @@ class AuthenticateRequestController(
       Enrolment(IR_SA_Enrolment_Key)
         .withIdentifier(IR_SA_Identifier, utr)
         .withDelegatedAuthRule(IR_SA_Delegated_Auth_Rule)
-  }
-
-  private val lowConfidenceResult: Future[Result] = {
-    Future.successful(
-      Unauthorized(
-        ApiErrorResponses(
-          Low_Confidence.toString,
-          "user confidence level is too low"
-        ).asJson
-      )
-    )
   }
 }
