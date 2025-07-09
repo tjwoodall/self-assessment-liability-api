@@ -32,7 +32,7 @@ class SelfAssessmentHistoryController @Inject() (
 )(implicit appConfig: AppConfig, ec: ExecutionContext)
     extends AuthenticateRequestController(cc, service, authConnector) {
 
-  def getYourSelfAssessmentData(utr: String, fromDate: String): Action[AnyContent] =
+  def getYourSelfAssessmentData(utr: String, fromDate: Option[String]): Action[AnyContent] =
     authorisedAction(utr) { implicit request =>
       Future.successful(Ok(Json.obj("message" -> "Success!")))
     }
