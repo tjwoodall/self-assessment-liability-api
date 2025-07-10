@@ -34,22 +34,7 @@ class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppCon
       .flatMap {
         case response if response.status == 200 =>
           Future.successful((response.json \ "ids" \ "nino").as[String])
-        case response if response.status == 400 =>
-          Future.failed(
-            Invalid_SAUTR
-          )
-        case response if response.status == 404 =>
-          Future.failed(
-            No_NINO_Found_For_SAUTR
-          )
-        case response if response.status == 500 =>
-          Future.failed(
-            More_Than_One_NINO_Found_For_SAUTR
-          )
-        case _ =>
-          Future.failed(
-            Downstream_Error
-          )
+        case _ => Future.failed(Downstream_Error)
       }
   }
 }

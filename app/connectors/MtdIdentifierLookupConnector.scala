@@ -17,7 +17,7 @@
 package connectors
 
 import config.AppConfig
-import models.ServiceErrors.{Downstream_Error, Invalid_NINO}
+import models.ServiceErrors.Downstream_Error
 import models.{MtdId, ServiceErrors}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -34,12 +34,7 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 => response.json.as[MtdId].toFuture
-        case response if response.status == 400 =>
-          Future.failed(Invalid_NINO)
-        case _ =>
-          Future.failed(
-            Downstream_Error
-          )
+        case _                                  => Future.failed(Downstream_Error)
       }
   }
 }

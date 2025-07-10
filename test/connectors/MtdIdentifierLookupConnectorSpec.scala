@@ -17,7 +17,7 @@
 package connectors
 
 import models.MtdId
-import models.ServiceErrors.{Downstream_Error, Invalid_NINO}
+import models.ServiceErrors.Downstream_Error
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
@@ -43,16 +43,9 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
       result.futureValue mustBe mtdId
     }
 
-    "return Invalid_NINO error in case of a 400 response" in {
+    "return Downstream_Error error in case of a non-200 response" in {
       simmulateGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
       val result = connector.getMtdId("invalidNino")
-      result.failed.futureValue mustBe Invalid_NINO
-
-    }
-
-    "return Downstream_Error in case of a any other response" in {
-      simmulateGet(serviceUrl("ninoCausingInternalError"), INTERNAL_SERVER_ERROR, "")
-      val result = connector.getMtdId("ninoCausinginternalError")
       result.failed.futureValue mustBe Downstream_Error
 
     }

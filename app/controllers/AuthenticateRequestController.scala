@@ -16,22 +16,25 @@
 
 package controllers
 
-import config.AppConfig
-import models.ServiceErrors.{Downstream_Error, Low_Confidence, Not_Allowed}
 import models.{ApiErrorResponses, RequestData}
+import play.api.Logging
 import play.api.mvc.*
 import services.SelfAssessmentService
+import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.auth.core.AffinityGroup.{Agent, Individual, Organisation}
-import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{affinityGroup, confidenceLevel}
 import uk.gov.hmrc.auth.core.retrieve.~
-import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import utils.UtrValidator
-import utils.constants.EnrolmentConstants.*
-import utils.constants.ErrorMessageConstansts.*
 import utils.FutureConverter.FutureOps
+import utils.SelfAssessmentEnrolments.*
+import utils.UtrValidator
+import utils.constants.ErrorMessageConstansts.{
+  badRequestMessage,
+  internalErrorMEssage,
+  unauthorisedMessage
+}
+
 import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -40,81 +43,95 @@ class AuthenticateRequestController(
     cc: ControllerComponents,
     selfAssessmentService: SelfAssessmentService,
     override val authConnector: AuthConnector
-)(implicit appConfig: AppConfig, ec: ExecutionContext)
+)(implicit ec: ExecutionContext)
     extends BackendController(cc)
-    with AuthorisedFunctions {
+    with AuthorisedFunctions
+    with Logging {
 
   private val minimumConfidence = ConfidenceLevel.L250
 
   def authorisedAction(
       utr: String
   )(block: RequestData[AnyContent] => Future[Result]): Action[AnyContent] = {
-    Action.async(cc.parsers.anyContent) { request =>
+    Action.async(cc.parsers.anyContent) { implicit request =>
       implicit val headerCarrier: HeaderCarrier = hc(request)
       val isUtrValid = UtrValidator.isValidUtr(utr)
-      if(isUtrValid){
-        authorised(selfAssessmentEnrolments(utr))
+      if (isUtrValid) {
+        authorised()
           .retrieve(affinityGroup and confidenceLevel) {
-            case Some(Individual) ~ userConfidence
-              if userConfidence.level < minimumConfidence.level =>
-             Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
-            case _ =>
-              block(RequestData(utr, None, request))
+            case Some(Individual) ~ userConfidence =>
+              dealWithSelfAssessmentIndividual(userConfidence, utr)(request, block)
+            case Some(Organisation) ~ _ => dealWithNonAgentAffinity(utr)(request, block)
+            case Some(Agent) ~ _        => authenticateAgent(utr)(request, block)
           }
-          .recoverWith {
-            case _: MissingBearerToken =>
-                BadRequest(ApiErrorResponses(badRequestMessage).asJson).toFuture
-            case _: AuthorisationException =>
-              selfAssessmentService.getMtdIdFromUtr(utr).flatMap { mtdId =>
-                  authorised(checkForMtdEnrolment(mtdId)).retrieve(affinityGroup and confidenceLevel) {
-                      case Some(Individual) ~ userConfidence
-                        if userConfidence.level < minimumConfidence.level =>
-                       Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
-                      case Some(Individual) ~ _ =>
-                        block(RequestData(utr, None, request))
-                      case Some(Organisation) ~ _ =>
-                        block(RequestData(utr, None, request))
-                      case Some(Agent) ~ _ =>
-                          authorised(agentDelegatedEnrolments(utr, mtdId)) {
-                            block(RequestData(utr, None, request))
-                          }.recover { case _: AuthorisationException =>
-                            InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson)
-                          }
-                    }
-                    .recover { case _: AuthorisationException =>
-                      InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson)
-                    }
-                }
-                .recover { case error =>
-                  InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson)
-                }
-            case error =>
-              InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
-          } 
-        } else {
+          .recover { case _: NoActiveSession =>
+            BadRequest(ApiErrorResponses(badRequestMessage).asJson)
+          }
+      } else {
         Future.successful(BadRequest(ApiErrorResponses(badRequestMessage).asJson))
       }
-     
+    }
+
+  }
+
+  private def dealWithSelfAssessmentIndividual(confidenceLevel: ConfidenceLevel, utr: String)(
+      implicit
+      request: Request[AnyContent],
+      block: RequestData[AnyContent] => Future[Result]
+  ): Future[Result] = {
+    if (confidenceLevel < minimumConfidence) {
+      Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+    } else {
+      dealWithNonAgentAffinity(utr)
     }
   }
 
-  private def selfAssessmentEnrolments(utr: String): Predicate = {
-    (Individual and Enrolment(IR_SA_Enrolment_Key).withIdentifier(IR_SA_Identifier, utr)) or
-      (Organisation and Enrolment(IR_SA_Enrolment_Key).withIdentifier(IR_SA_Identifier, utr))
+  private def dealWithNonAgentAffinity(utr: String)(implicit
+      request: Request[AnyContent],
+      block: RequestData[AnyContent] => Future[Result],
+      hc: HeaderCarrier
+  ): Future[Result] = {
+    authorised(legacySaEnrolment(utr)) {
+      block(RequestData(utr, None, request))
+    }.recoverWith { case _: AuthorisationException =>
+      selfAssessmentService
+        .getMtdIdFromUtr(utr)
+        .flatMap { mtdId =>
+          authorised(mtdSaEnrolment(mtdId)) {
+            block(RequestData(utr, None, request))
+          }
+        }
+        .recoverWith {
+          case _: AuthorisationException =>
+            Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+          case error => InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+        }
+    }
   }
 
-  private def checkForMtdEnrolment(mtdId: String): Predicate = {
-    (Individual and Enrolment(Mtd_Enrolment_Key).withIdentifier(Mtd_Identifier, mtdId)) or
-      (Organisation and Enrolment(Mtd_Enrolment_Key).withIdentifier(Mtd_Identifier, mtdId)) or
-      (Agent and Enrolment(ASA_Enrolment_Key))
+  private def authenticateAgent(utr: String)(implicit
+      request: Request[AnyContent],
+      block: RequestData[AnyContent] => Future[Result],
+      hc: HeaderCarrier
+  ): Future[Result] = {
+    authorised(principleAgentEnrolments) {
+      selfAssessmentService
+        .getMtdIdFromUtr(utr)
+        .flatMap { mtdId =>
+          authorised(delegatedEnrolments(utr, mtdId)) {
+            block(RequestData(utr, None, request))
+          }
+        }
+        .recoverWith {
+          case _: AuthorisationException =>
+            Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+          case error => InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+        }
+
+    }.recoverWith { case _: AuthorisationException =>
+      Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+    }
+
   }
 
-  private def agentDelegatedEnrolments(utr: String, mtdId: String): Predicate = {
-    Enrolment(Mtd_Enrolment_Key)
-      .withIdentifier(Mtd_Identifier, mtdId)
-      .withDelegatedAuthRule(Mtd_Delegated_Auth_Rule) or
-      Enrolment(IR_SA_Enrolment_Key)
-        .withIdentifier(IR_SA_Identifier, utr)
-        .withDelegatedAuthRule(IR_SA_Delegated_Auth_Rule)
-  }
 }
