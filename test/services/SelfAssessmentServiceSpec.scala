@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package controllers
+package services
 
-import config.AppConfig
 import connectors.{CitizenDetailsConnector, HipConnector, MtdIdentifierLookupConnector}
 import models.{ApiErrorResponses, HipResponse}
 import models.ServiceErrors.*
@@ -25,18 +24,11 @@ import org.mockito.Mockito.when
 import org.scalatest.prop.TableDrivenPropertyChecks.forEvery
 import org.scalatest.prop.Tables.Table
 import org.scalatestplus.mockito.MockitoSugar.mock
-import play.api.{Application, UnexpectedException}
+import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
-import play.api.test.FakeRequest
 import play.api.test.Helpers.*
-import services.SelfAssessmentService
 import shared.{HttpWireMock, SpecBase}
-import uk.gov.hmrc.auth.core.AffinityGroup.Individual
-import uk.gov.hmrc.auth.core.{AuthConnector, ConfidenceLevel}
-import uk.gov.hmrc.auth.core.syntax.retrieved.authSyntaxForRetrieved
-import utils.FutureConverter.FutureOps
 
 import scala.concurrent.Future
 
