@@ -16,12 +16,14 @@
 
 package connectors
 
+import com.fasterxml.jackson.core.JsonParseException
 import config.AppConfig
+import models.HipResponse
 import models.ServiceErrors.*
-import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
+import utils.FutureConverter.FutureOps
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,7 +32,7 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
   def getSelfAssessmentData(
       utr: String,
       dateFrom: String
-  )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[JsValue] = {
+  )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HipResponse] = {
     client
       .get(
         url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details?dateFrom=$dateFrom"
@@ -38,7 +40,7 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
-          Future.successful(Json.toJson(response.body))
+          response.json.as[HipResponse].toFuture
         case response if response.status == 400 =>
           Future.failed(Invalid_Correlation_Id)
         case response if response.status == 401 =>
@@ -57,6 +59,9 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
           Future.failed(HIP_Service_Unavailable)
         case _ =>
           Future.failed(Downstream_Error)
+      }
+      .recoverWith { case _: JsonParseException =>
+        Future.failed(Downstream_Error)
       }
   }
 }

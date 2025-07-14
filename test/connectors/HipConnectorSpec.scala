@@ -76,6 +76,12 @@ class HipConnectorSpec extends SpecBase with HttpWireMock {
       result.futureValue mustBe Json.toJson(successResponse)
     }
 
+    "return expected error if returned JSON is malformed" in {
+      simmulateGet(serviceUrl, OK, """{malformedJson}""")
+      val result = connector.getSelfAssessmentData(utr, dateFrom)
+      result.failed.futureValue mustBe Downstream_Error
+    }
+
     "return expected error if 400 response is received" in {
       simmulateGet(serviceUrl, BAD_REQUEST, "")
       val result = connector.getSelfAssessmentData(utr, dateFrom)

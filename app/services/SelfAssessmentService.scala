@@ -16,20 +16,47 @@
 
 package services
 
-import connectors.{CitizenDetailsConnector, MtdIdentifierLookupConnector}
+import connectors.*
+import models.HipResponse
+import models.ServiceErrors.*
+import models.StandardErrorResponses.*
+import play.api.libs.json.Json
+import play.api.mvc.Result
+import play.api.mvc.Results.*
 import uk.gov.hmrc.http.HeaderCarrier
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentService @Inject() (
-    val cidConncetor: CitizenDetailsConnector,
-    mtdConnector: MtdIdentifierLookupConnector
+    val cidConnector: CitizenDetailsConnector,
+    mtdConnector: MtdIdentifierLookupConnector,
+    hipConnector: HipConnector
 )(implicit ec: ExecutionContext) {
   def getMtdIdFromUtr(utr: String)(implicit hc: HeaderCarrier): Future[String] = {
     for {
-      nino <- cidConncetor.getNino(utr)
+      nino <- cidConnector.getNino(utr)
       mtdId <- mtdConnector.getMtdId(nino)
     } yield mtdId.mtdbsa
+  }
+
+  def getHipData(utr: String, fromDate: String)(implicit hc: HeaderCarrier): Future[Result] = {
+    hipConnector
+      .getSelfAssessmentData(utr, fromDate)
+      .flatMap { hipResponse =>
+        Future.successful(Ok(Json.toJson(hipResponse)))
+      }
+      .recoverWith {
+        case _: Invalid_Correlation_Id.type    => internalServerError
+        case _: HIP_Unauthorised.type          => unauthorised
+        case _: HIP_Forbidden.type             => forbidden
+        case _: No_Payments_Found_For_UTR.type => badRequest
+        case _: Invalid_UTR.type               => internalServerError
+        case _: HIP_Server_Error.type          => internalServerError
+        case _: HIP_Bad_Gateway.type           => internalServerError
+        case _: HIP_Service_Unavailable.type   => serviceUnavailable
+        case _: Downstream_Error.type          => internalServerError
+        case _: Any                            => internalServerError
+      }
   }
 }

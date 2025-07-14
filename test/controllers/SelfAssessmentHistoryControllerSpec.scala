@@ -53,7 +53,6 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
     new SelfAssessmentHistoryController(
       authConnector,
       selfAssessmentService,
-      hipConnector,
       cc
     )(
       appConfig,
