@@ -17,7 +17,6 @@
 package controllers
 
 import config.AppConfig
-import connectors.HipConnector
 import models.ApiErrorResponses
 import models.StandardErrorResponses.internalServerError
 import org.mockito.ArgumentMatchers.any
@@ -41,7 +40,6 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
   override lazy val app: Application = new GuiceApplicationBuilder().build()
 
   private val authConnector: AuthConnector = mock[AuthConnector]
-  private val hipConnector: HipConnector = mock[HipConnector]
   private val selfAssessmentService: SelfAssessmentService = mock[SelfAssessmentService]
   private val appConfig: AppConfig = mock[AppConfig]
   private val cc: ControllerComponents = app.injector.instanceOf[ControllerComponents]
