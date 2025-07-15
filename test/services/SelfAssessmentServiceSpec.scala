@@ -123,7 +123,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
             .thenReturn(Future.failed(serviceError))
 
           running(app) {
-          val result = selfAssessmentService.getHipData(utr, date)
+            val result = selfAssessmentService.getHipData(utr, date)
 
             status(result) mustBe INTERNAL_SERVER_ERROR
             contentAsJson(result) mustBe ApiErrorResponses(

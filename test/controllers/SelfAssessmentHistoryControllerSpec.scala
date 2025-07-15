@@ -19,7 +19,7 @@ package controllers
 import config.AppConfig
 import connectors.HipConnector
 import models.ApiErrorResponses
-import models.ServiceErrors.*
+import models.StandardErrorResponses.internalServerError
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -56,9 +56,10 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
       appConfig,
       ec
     )
-  private val jsonResponse: String = """{
-  "someJson": []
-}"""
+  private val jsonResponse: String = """
+    |{
+    |  "someJson": []
+    |}""".stripMargin
 
   private def controllerMethod(
       utr: String,
@@ -72,28 +73,28 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
 
     "getting self assessment data" should {
       "return details as JSON when successful" in {
-        when(hipConnector.getSelfAssessmentData(any(), any())(any(), any()))
-          .thenReturn(Future.successful(Json.toJson(jsonResponse)))
+        when(selfAssessmentService.getHipData(any(), any())(any()))
+          .thenReturn(Future.successful(Ok(jsonResponse)))
 
         running(app) {
           val result = controllerMethod(utr, date, controller)(FakeRequest())
 
           status(result) mustBe OK
-          contentAsJson(result) mustBe Json.toJson(jsonResponse)
+          contentAsJson(result) mustBe Json.parse(jsonResponse)
         }
       }
 
       "return an error when the request fails" in {
-        when(hipConnector.getSelfAssessmentData(any(), any())(any(), any()))
-          .thenReturn(Future.failed(HIP_Service_Unavailable))
+        when(selfAssessmentService.getHipData(any(), any())(any()))
+          .thenReturn(internalServerError)
 
         running(app) {
           val result = controllerMethod(utr, date, controller)(FakeRequest())
 
-          status(result) mustBe SERVICE_UNAVAILABLE
+          status(result) mustBe INTERNAL_SERVER_ERROR
           contentAsJson(result) mustBe ApiErrorResponses(
-            "Service Unavailable",
-            "Service unavailable. Pleased try again later."
+            "Internal Server Error",
+            "Unexpected internal error. Please try again later."
           ).asJson
         }
       }
