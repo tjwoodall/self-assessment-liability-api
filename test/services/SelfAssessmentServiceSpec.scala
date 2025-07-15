@@ -149,7 +149,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
           status(result) mustBe UNAUTHORIZED
           contentAsJson(result) mustBe ApiErrorResponses(
             "Unauthorised",
-            "Invalid request format or parameters"
+            "Authorisation failed"
           ).asJson
         }
       }
@@ -206,7 +206,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
           status(result) mustBe SERVICE_UNAVAILABLE
           contentAsJson(result) mustBe ApiErrorResponses(
             "Service Unavailable",
-            "Service unavailable. Pleased try again later"
+            "Service unavailable. Pleased try again later."
           ).asJson
         }
       }

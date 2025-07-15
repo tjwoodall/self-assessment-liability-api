@@ -35,7 +35,7 @@ object StandardErrorResponses {
   final val unauthorised: Future[Result] = Unauthorized(
     ApiErrorResponses(
       "Unauthorised",
-      "Invalid request format or parameters"
+      "Authorisation failed"
     ).asJson
   ).toFuture
 
@@ -56,7 +56,7 @@ object StandardErrorResponses {
   final val serviceUnavailable: Future[Result] = ServiceUnavailable(
     ApiErrorResponses(
       "Service Unavailable",
-      "Service unavailable. Pleased try again later"
+      "Service unavailable. Pleased try again later."
     ).asJson
   ).toFuture
 }
