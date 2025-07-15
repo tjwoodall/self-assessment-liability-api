@@ -47,68 +47,6 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
   )
   private val utr: String = "1234567890"
   private val date: String = "2025-04-06"
-  private val jsonResponse: String =
-   """
-      |{
-      |  "balanceDetails": {
-      |  "totalOverdueBalance": 500.00,
-      |  "totalPayableBalance": 500.00,
-      |  "payableDueDate": "2025-04-31",
-      |  "totalPendingBalance": 1500.00,
-      |  "pendingDueDate": "2025-07-15",
-      |  "totalBalance": 2000.00,
-      |  "totalCodedOut": 250.00,
-      |  "totalCreditAvailable": 0.00
-      |},
-      |"chargeDetails": [
-      |  {
-      |    "chargeId": "KL3456789",
-      |   "creationDate": "2025-05-22",
-      |    "chargeType": "VATC",
-      |    "chargeAmount": 1500.00,
-      |    "outstandingAmount": 1500.00,
-      |    "taxYear": "2025-2026",
-      |    "dueDate": "2025-07-15",
-      |    "amendments": [
-      |      {
-      |        "amendmentId": "aid",
-      |        "amendmentType": "at",
-      |        "amendmentDate": "ad",
-      |        "amendmentAmount": 0.00
-      |      }
-      |    ],
-      |    "codedOutDetail": [
-      |      {
-      |        "amount": 0.00,
-      |        "codedChargeType": "cdt",
-      |        "effectiveDate": "ed",
-      |        "taxYear": "ty",
-      |        "effectiveTaxYear": "ety"
-      |      }
-      |    ]
-      |  }
-      |],
-      |"refundDetails": [
-      |  {
-      |    "issueDate": "id",
-      |    "refundMethod": "rm",
-      |    "refundRequestDate": "rrd",
-      |    "refundRequestAmount": 0.00,
-      |    "refundReference": "rr",
-      |    "interestAddedToRefund": 0.00,
-      |    "refundActualAmount": 0.00,
-      |    "refundStatus": "rs"
-      |  }
-      |],
-      |"paymentHistoryDetails": [
-      |  {
-      |    "paymentAmount": 500.00 ,
-      |    "paymentDate": "2025-04-11",
-      |    "dateProcessed": "2025-04-15"
-      |  }
-      |]
-    |}""".stripMargin
-  private val hipResponse: HipResponse = Json.parse(jsonResponse).as[HipResponse]
 
   "SelfAssessmentServiceSpec" when {
     "getting HIP data" should {
