@@ -62,7 +62,7 @@ trait SpecBase
       |"chargeDetails": [
       |  {
       |    "chargeId": "KL3456789",
-      |   "creationDate": "2025-05-22",
+      |    "creationDate": "2025-05-22",
       |    "chargeType": "VATC",
       |    "chargeAmount": 1500.00,
       |    "outstandingAmount": 1500.00,
@@ -70,16 +70,14 @@ trait SpecBase
       |    "dueDate": "2025-07-15",
       |    "amendments": [
       |      {
-      |        "amendmentId": "aid",
-      |        "amendmentType": "at",
       |        "amendmentDate": "ad",
-      |        "amendmentAmount": 0.00
+      |        "amendmentAmount": 0.00,
+      |        "amendmentReason": "ar"
       |      }
       |    ],
       |    "codedOutDetail": [
       |      {
       |        "amount": 0.00,
-      |        "codedChargeType": "cdt",
       |        "effectiveDate": "ed",
       |        "taxYear": "ty",
       |        "effectiveTaxYear": "ety"
@@ -101,9 +99,12 @@ trait SpecBase
       |],
       |"paymentHistoryDetails": [
       |  {
-      |    "paymentAmount": 500.00 ,
+      |    "paymentAmount": 500.00,
+      |    "paymentReference": "payment reference id",
+      |    "paymentMethod": "payment method",
       |    "paymentDate": "2025-04-11",
-      |    "dateProcessed": "2025-04-15"
+      |    "dateProcessed": "2025-04-15",
+      |    "allocationReference": "allocation reference"
       |  }
       |]
     |}""".stripMargin

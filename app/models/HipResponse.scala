@@ -20,9 +20,9 @@ import play.api.libs.json.{Json, OFormat}
 
 case class HipResponse(
     balanceDetails: BalanceDetails,
-    chargeDetails: Set[ChargeDetails],
-    refundDetails: Set[RefundDetails],
-    paymentHistoryDetails: Set[PaymentHistoryDetails]
+    chargeDetails: Option[Set[ChargeDetails]],
+    refundDetails: Option[Set[RefundDetails]],
+    paymentHistoryDetails: Option[Set[PaymentHistoryDetails]]
 )
 
 object HipResponse {
@@ -52,19 +52,34 @@ case class ChargeDetails(
     outstandingAmount: Double,
     taxYear: String,
     dueDate: String,
-    amendments: Set[Amendments],
-    codedOutDetail: Set[CodedOutDetail]
+    interestAmountDue: Option[Double],
+    accruingInterest: Option[Double],
+    accruingInterestDateRange: Option[AccruingInterestDateRange],
+    accruingInterestRate: Option[Double],
+    amendments: Option[Set[Amendments]],
+    codedOutDetail: Option[Set[CodedOutDetail]]
 )
 
 object ChargeDetails {
   implicit val format: OFormat[ChargeDetails] = Json.format[ChargeDetails]
 }
 
+case class AccruingInterestDateRange(
+    interestStartDate: String,
+    interestEndDate: String
+)
+
+object AccruingInterestDateRange {
+  implicit val format: OFormat[AccruingInterestDateRange] = Json.format[AccruingInterestDateRange]
+}
+
 case class Amendments(
-    amendmentId: String,
-    amendmentType: String,
     amendmentDate: String,
-    amendmentAmount: Double
+    amendmentAmount: Double,
+    amendmentReason: String,
+    newChargeBalance: Option[Double],
+    paymentMethod: Option[String],
+    paymentDate: Option[String]
 )
 
 object Amendments {
@@ -72,11 +87,10 @@ object Amendments {
 }
 
 case class CodedOutDetail(
-    amount: Double,
-    codedChargeType: String,
-    effectiveDate: String,
-    taxYear: String,
-    effectiveTaxYear: String
+    amount: Option[Double],
+    effectiveDate: Option[String],
+    taxYear: Option[String],
+    effectiveTaxYear: Option[String]
 )
 
 object CodedOutDetail {
@@ -85,13 +99,13 @@ object CodedOutDetail {
 
 case class RefundDetails(
     issueDate: String,
-    refundMethod: String,
-    refundRequestDate: String,
+    refundMethod: Option[String],
+    refundRequestDate: Option[String],
     refundRequestAmount: Double,
-    refundReference: String,
-    interestAddedToRefund: Double,
+    refundReference: Option[String],
+    interestAddedToRefund: Option[Double],
     refundActualAmount: Double,
-    refundStatus: String
+    refundStatus: Option[String]
 )
 
 object RefundDetails {
@@ -100,8 +114,11 @@ object RefundDetails {
 
 case class PaymentHistoryDetails(
     paymentAmount: Double,
+    paymentReference: String,
+    paymentMethod: String,
     paymentDate: String,
-    dateProcessed: String
+    dateProcessed: String,
+    allocationReference: Option[String]
 )
 
 object PaymentHistoryDetails {
