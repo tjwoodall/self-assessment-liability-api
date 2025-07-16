@@ -18,7 +18,6 @@ package controllers
 
 import config.AppConfig
 import models.ApiErrorResponses
-import models.StandardErrorResponses.internalServerError
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -33,6 +32,8 @@ import shared.{HttpWireMock, SpecBase}
 import uk.gov.hmrc.auth.core.AffinityGroup.Individual
 import uk.gov.hmrc.auth.core.{AuthConnector, ConfidenceLevel}
 import uk.gov.hmrc.auth.core.syntax.retrieved.authSyntaxForRetrieved
+import utils.constants.ErrorMessageConstants.internalErrorMessage
+import utils.FutureConverter.FutureOps
 
 import scala.concurrent.Future
 
@@ -84,16 +85,13 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
 
       "return an error when the request fails" in {
         when(selfAssessmentService.getHipData(any(), any())(any()))
-          .thenReturn(internalServerError)
+          .thenReturn(InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture)
 
         running(app) {
           val result = controllerMethod(utr, date, controller)(FakeRequest())
 
           status(result) mustBe INTERNAL_SERVER_ERROR
-          contentAsJson(result) mustBe ApiErrorResponses(
-            "Internal Server Error",
-            "Unexpected internal error. Please try again later."
-          ).asJson
+          contentAsJson(result) mustBe ApiErrorResponses(internalErrorMessage).asJson
         }
       }
     }

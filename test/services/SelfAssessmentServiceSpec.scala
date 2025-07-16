@@ -29,6 +29,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.test.Helpers.*
 import shared.{HttpWireMock, SpecBase}
+import utils.constants.ErrorMessageConstants.*
 
 import scala.concurrent.Future
 
@@ -70,10 +71,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
           val result = selfAssessmentService.getHipData(utr, date)
 
           status(result) mustBe BAD_REQUEST
-          contentAsJson(result) mustBe ApiErrorResponses(
-            "Bad Request",
-            "Invalid request format or parameters"
-          ).asJson
+          contentAsJson(result) mustBe ApiErrorResponses(badRequestMessage).asJson
         }
       }
 
@@ -85,10 +83,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
           val result = selfAssessmentService.getHipData(utr, date)
 
           status(result) mustBe UNAUTHORIZED
-          contentAsJson(result) mustBe ApiErrorResponses(
-            "Unauthorised",
-            "Authorisation failed"
-          ).asJson
+          contentAsJson(result) mustBe ApiErrorResponses(unauthorisedMessage).asJson
         }
       }
 
@@ -100,10 +95,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
           val result = selfAssessmentService.getHipData(utr, date)
 
           status(result) mustBe FORBIDDEN
-          contentAsJson(result) mustBe ApiErrorResponses(
-            "Forbidden",
-            "Access not permitted"
-          ).asJson
+          contentAsJson(result) mustBe ApiErrorResponses(forbiddenMessage).asJson
         }
       }
 
@@ -126,10 +118,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
             val result = selfAssessmentService.getHipData(utr, date)
 
             status(result) mustBe INTERNAL_SERVER_ERROR
-            contentAsJson(result) mustBe ApiErrorResponses(
-              "Internal Server Error",
-              "Unexpected internal error. Please try again later."
-            ).asJson
+            contentAsJson(result) mustBe ApiErrorResponses(internalErrorMessage).asJson
           }
         }
       }
@@ -142,10 +131,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
           val result = selfAssessmentService.getHipData(utr, date)
 
           status(result) mustBe SERVICE_UNAVAILABLE
-          contentAsJson(result) mustBe ApiErrorResponses(
-            "Service Unavailable",
-            "Service unavailable. Pleased try again later."
-          ).asJson
+          contentAsJson(result) mustBe ApiErrorResponses(serviceUnavailableMessage).asJson
         }
       }
     }
