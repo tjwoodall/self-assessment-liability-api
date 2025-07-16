@@ -44,7 +44,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
   private val appConfig: AppConfig = mock[AppConfig]
   private val cc: ControllerComponents = app.injector.instanceOf[ControllerComponents]
   private val utr: String = "1234567890"
-  private val date: String = "2025-04-06"
+  private val date: Option[String] = Some("2025-04-06")
   private val controller =
     new SelfAssessmentHistoryController(
       authConnector,
@@ -61,7 +61,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
 
   private def controllerMethod(
       utr: String,
-      fromDate: String,
+      fromDate: Option[String],
       controller: SelfAssessmentHistoryController
   ): Action[AnyContent] = controller.getYourSelfAssessmentData(utr, fromDate)
 
