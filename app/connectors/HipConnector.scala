@@ -31,11 +31,11 @@ import scala.concurrent.{ExecutionContext, Future}
 class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
   def getSelfAssessmentData(
       utr: String,
-      dateFrom: String
+      fromDate: String
   )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HipResponse] = {
     client
       .get(
-        url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details?dateFrom=$dateFrom"
+        url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details?fromDate=$fromDate"
       )
       .execute[HttpResponse]
       .flatMap {
