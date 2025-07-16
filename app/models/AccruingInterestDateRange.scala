@@ -18,13 +18,11 @@ package models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class HipResponse(
-    balanceDetails: BalanceDetails,
-    chargeDetails: Option[Set[ChargeDetails]],
-    refundDetails: Option[Set[RefundDetails]],
-    paymentHistoryDetails: Option[Set[PaymentHistoryDetails]]
+case class AccruingInterestDateRange(
+    interestStartDate: String,
+    interestEndDate: String
 )
 
-object HipResponse {
-  implicit val format: OFormat[HipResponse] = Json.format[HipResponse]
+object AccruingInterestDateRange {
+  implicit val format: OFormat[AccruingInterestDateRange] = Json.format[AccruingInterestDateRange]
 }

@@ -18,13 +18,15 @@ package models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class HipResponse(
-    balanceDetails: BalanceDetails,
-    chargeDetails: Option[Set[ChargeDetails]],
-    refundDetails: Option[Set[RefundDetails]],
-    paymentHistoryDetails: Option[Set[PaymentHistoryDetails]]
+case class Amendments(
+    amendmentDate: String,
+    amendmentAmount: Double,
+    amendmentReason: String,
+    newChargeBalance: Option[Double],
+    paymentMethod: Option[String],
+    paymentDate: Option[String]
 )
 
-object HipResponse {
-  implicit val format: OFormat[HipResponse] = Json.format[HipResponse]
+object Amendments {
+  implicit val format: OFormat[Amendments] = Json.format[Amendments]
 }
