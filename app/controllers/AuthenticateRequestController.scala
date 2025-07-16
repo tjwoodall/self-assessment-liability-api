@@ -16,6 +16,7 @@
 
 package controllers
 
+import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
 import models.{ApiErrorResponses, RequestData}
 import play.api.Logging
 import play.api.mvc.*
@@ -32,6 +33,7 @@ import utils.UtrValidator
 import utils.constants.ErrorMessageConstansts.{
   badRequestMessage,
   forbiddenMessage,
+  internalErrorMEssage,
   serviceUnavailableMessage,
   unauthorisedMessage
 }
@@ -107,7 +109,9 @@ class AuthenticateRequestController(
         .recoverWith {
           case _: AuthorisationException =>
             Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
-          case error =>
+          case Downstream_Error =>
+            InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+          case _ =>
             ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
         }
     }
@@ -129,7 +133,9 @@ class AuthenticateRequestController(
         .recoverWith {
           case _: AuthorisationException =>
             Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
-          case error =>
+          case Downstream_Error =>
+            InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+          case _ =>
             ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
         }
 

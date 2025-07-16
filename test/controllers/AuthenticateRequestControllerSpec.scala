@@ -16,7 +16,7 @@
 
 package controllers
 import models.ApiErrorResponses
-import models.ServiceErrors.Downstream_Error
+import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -113,19 +113,19 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
         }
       }
       "return service unavailable if auth is down" in {
+        when(
+          authConnector.authorise(
+            any(),
+            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+          )(any(), any())
+        )
+          .thenReturn(Future.failed(Downstream_Error))
         running(app) {
           val controller =
             new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
               ExecutionContext.global
             )
           val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-          when(
-            authConnector.authorise(
-              any(),
-              eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-            )(any(), any())
-          )
-            .thenReturn(throw new Exception("something went wrong"))
           status(result) mustBe SERVICE_UNAVAILABLE
           contentAsJson(result) mustBe ApiErrorResponses(
             serviceUnavailableMessage
@@ -247,7 +247,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           ).asJson
         }
       }
-      "return service unavailable if call to fetch mtd id fails" in {
+      "return service unavailable if call to fetch mtd id fails due to service being unvailable" in {
         when(
           authConnector.authorise(
             any(),
@@ -263,7 +263,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(InsufficientEnrolments()))
 
         when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
-          .thenReturn(Future.failed(Downstream_Error))
+          .thenReturn(Future.failed(Service_Currently_Unavailable))
         running(app) {
           val controller =
             new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
@@ -279,238 +279,330 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
       }
     }
 
-    "Organisation Affinity" should {
-      "return ok for a valid mtd enrolment" in {
-        when(
-          authConnector.authorise(
-            any(),
-            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-          )(any(), any())
-        )
-          .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
+    "return internal server error if call to fetch mtd id fails due to bad data quality" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Individual), minimumConfidence)))
 
-        when(
-          authConnector
-            .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
-        )
-          .thenReturn(Future.failed(InsufficientEnrolments()))
+      when(
+        authConnector
+          .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.failed(InsufficientEnrolments()))
 
-        when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
-          .thenReturn(Future.successful("mtdId"))
+      when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
+        .thenReturn(Future.failed(Downstream_Error))
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
+          )
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
 
-        when(
-          authConnector.authorise(eqTo(mtdSaEnrolment("mtdId")), eqTo(EmptyRetrieval))(any(), any())
-        )
-          .thenReturn(Future.successful(()))
-        running(app) {
-          val controller =
-            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
-              ExecutionContext.global
-            )
-          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-
-          status(result) mustBe OK
-        }
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe ApiErrorResponses(
+          internalErrorMEssage
+        ).asJson
       }
-      "return success for a valid legacy SA enrolement" in {
-        when(
-          authConnector.authorise(
-            any(),
-            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-          )(any(), any())
-        )
-          .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
+    }
+  }
 
-        when(
-          authConnector
-            .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
-        )
-          .thenReturn(Future.successful(()))
+  "Organisation Affinity" should {
+    "return ok for a valid mtd enrolment" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
 
-        running(app) {
-          val controller =
-            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
-              ExecutionContext.global
-            )
-          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+      when(
+        authConnector
+          .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.failed(InsufficientEnrolments()))
 
-          status(result) mustBe OK
-        }
+      when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
+        .thenReturn(Future.successful("mtdId"))
+
+      when(
+        authConnector.authorise(eqTo(mtdSaEnrolment("mtdId")), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.successful(()))
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
+          )
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+
+        status(result) mustBe OK
       }
-      "return unauthorised if they do not have any of the accepted enrolments" in {
-        when(
-          authConnector.authorise(
-            any(),
-            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-          )(any(), any())
-        )
-          .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
+    }
+    "return success for a valid legacy SA enrolement" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
 
-        when(
-          authConnector
-            .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
-        )
-          .thenReturn(Future.failed(InsufficientEnrolments()))
+      when(
+        authConnector
+          .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.successful(()))
 
-        when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
-          .thenReturn(Future.successful("mtdId"))
-        when(
-          authConnector.authorise(eqTo(mtdSaEnrolment("mtdId")), eqTo(EmptyRetrieval))(any(), any())
-        )
-          .thenReturn(Future.failed(InsufficientEnrolments()))
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
+          )
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
 
-        running(app) {
-          val controller =
-            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
-              ExecutionContext.global
-            )
-          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-
-          status(result) mustBe FORBIDDEN
-          contentAsJson(result) mustBe ApiErrorResponses(
-            forbiddenMessage
-          ).asJson
-        }
+        status(result) mustBe OK
       }
-      "return service unavailable error if call to fetch mtd id fails" in {
-        when(
-          authConnector.authorise(
-            any(),
-            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-          )(any(), any())
+    }
+    "return unauthorised if they do not have any of the accepted enrolments" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
+
+      when(
+        authConnector
+          .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.failed(InsufficientEnrolments()))
+
+      when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
+        .thenReturn(Future.successful("mtdId"))
+      when(
+        authConnector.authorise(eqTo(mtdSaEnrolment("mtdId")), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.failed(InsufficientEnrolments()))
+
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
+          )
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+
+        status(result) mustBe FORBIDDEN
+        contentAsJson(result) mustBe ApiErrorResponses(
+          forbiddenMessage
+        ).asJson
+      }
+    }
+    "return service unavailble error if call to fetch mtd id fails due to services being down" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Individual), minimumConfidence)))
+
+      when(
+        authConnector
+          .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.failed(InsufficientEnrolments()))
+
+      when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
+        .thenReturn(Future.failed(Service_Currently_Unavailable))
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
+          )
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+
+        status(result) mustBe SERVICE_UNAVAILABLE
+        contentAsJson(result) mustBe ApiErrorResponses(
+          serviceUnavailableMessage
+        ).asJson
+      }
+    }
+    "return service unavailable error if call to fetch mtd id fails due to bad data quality" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
+
+      when(
+        authConnector
+          .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
+      )
+        .thenReturn(Future.failed(InsufficientEnrolments()))
+
+      when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
+        .thenReturn(Future.failed(Downstream_Error))
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
+          )
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe ApiErrorResponses(
+          internalErrorMEssage
+        ).asJson
+      }
+    }
+  }
+
+  "Agent Affinity" should {
+
+    "return ok for an agent allowed for self assessment tax and a delagated self assessment enrolment" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Agent), lowConfidence)))
+      when(
+        authConnector.authorise(eqTo(principleAgentEnrolments), eqTo(EmptyRetrieval))(
+          any(),
+          any()
         )
-          .thenReturn(Future.successful(new ~(Some(Organisation), minimumConfidence)))
+      )
+        .thenReturn(Future.successful(()))
+      when(selfAssessmentService.getMtdIdFromUtr(any())(any()))
+        .thenReturn(Future.successful("mtdId"))
+      when(
+        authConnector.authorise(
+          eqTo(delegatedEnrolments(validUtr, "mtdId")),
+          eqTo(EmptyRetrieval)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(()))
 
-        when(
-          authConnector
-            .authorise(eqTo(legacySaEnrolment(validUtr)), eqTo(EmptyRetrieval))(any(), any())
-        )
-          .thenReturn(Future.failed(InsufficientEnrolments()))
-
-        when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
-          .thenReturn(Future.failed(Downstream_Error))
-        running(app) {
-          val controller =
-            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
-              ExecutionContext.global
-            )
-          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-
-          status(result) mustBe SERVICE_UNAVAILABLE
-          contentAsJson(result) mustBe ApiErrorResponses(
-            serviceUnavailableMessage
-          ).asJson
-        }
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
+          )
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+        status(result) mustBe OK
       }
     }
 
-    "Agent Affinity" should {
-
-      "return ok for an agent allowed for self assessment tax and a delagated self assessment enrolment" in {
-        when(
-          authConnector.authorise(
-            any(),
-            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-          )(any(), any())
+    "return FORBIDDEN if agent/client relationship is not established via the utr provided" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Agent), lowConfidence)))
+      when(
+        authConnector.authorise(eqTo(principleAgentEnrolments), eqTo(EmptyRetrieval))(
+          any(),
+          any()
         )
-          .thenReturn(Future.successful(new ~(Some(Agent), lowConfidence)))
-        when(
-          authConnector.authorise(eqTo(principleAgentEnrolments), eqTo(EmptyRetrieval))(
-            any(),
-            any()
+      )
+        .thenReturn(Future.successful(()))
+      when(selfAssessmentService.getMtdIdFromUtr(any())(any()))
+        .thenReturn(Future.successful("mtdId"))
+      when(
+        authConnector.authorise(
+          eqTo(delegatedEnrolments(validUtr, "mtdId")),
+          eqTo(EmptyRetrieval)
+        )(any(), any())
+      )
+        .thenReturn(Future.failed(InsufficientEnrolments()))
+
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
           )
-        )
-          .thenReturn(Future.successful(()))
-        when(selfAssessmentService.getMtdIdFromUtr(any())(any()))
-          .thenReturn(Future.successful("mtdId"))
-        when(
-          authConnector.authorise(
-            eqTo(delegatedEnrolments(validUtr, "mtdId")),
-            eqTo(EmptyRetrieval)
-          )(any(), any())
-        )
-          .thenReturn(Future.successful(()))
-
-        running(app) {
-          val controller =
-            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
-              ExecutionContext.global
-            )
-          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-          status(result) mustBe OK
-        }
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+        status(result) mustBe FORBIDDEN
+        contentAsJson(result) mustBe ApiErrorResponses(
+          forbiddenMessage
+        ).asJson
       }
+    }
 
-      "return FORBIDDEN if agent/client relationship is not established via the utr provided" in {
-        when(
-          authConnector.authorise(
-            any(),
-            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-          )(any(), any())
+    "return service unavailable error if call to fetch mtd fails due to services being down" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Agent), lowConfidence)))
+      when(
+        authConnector.authorise(eqTo(principleAgentEnrolments), eqTo(EmptyRetrieval))(
+          any(),
+          any()
         )
-          .thenReturn(Future.successful(new ~(Some(Agent), lowConfidence)))
-        when(
-          authConnector.authorise(eqTo(principleAgentEnrolments), eqTo(EmptyRetrieval))(
-            any(),
-            any()
+      )
+        .thenReturn(Future.successful(()))
+      when(selfAssessmentService.getMtdIdFromUtr(any())(any()))
+        .thenReturn(Future.failed(Service_Currently_Unavailable))
+
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
           )
-        )
-          .thenReturn(Future.successful(()))
-        when(selfAssessmentService.getMtdIdFromUtr(any())(any()))
-          .thenReturn(Future.successful("mtdId"))
-        when(
-          authConnector.authorise(
-            eqTo(delegatedEnrolments(validUtr, "mtdId")),
-            eqTo(EmptyRetrieval)
-          )(any(), any())
-        )
-          .thenReturn(Future.failed(InsufficientEnrolments()))
-
-        running(app) {
-          val controller =
-            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
-              ExecutionContext.global
-            )
-          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-          status(result) mustBe FORBIDDEN
-          contentAsJson(result) mustBe ApiErrorResponses(
-            forbiddenMessage
-          ).asJson
-        }
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+        status(result) mustBe SERVICE_UNAVAILABLE
+        contentAsJson(result) mustBe ApiErrorResponses(
+          serviceUnavailableMessage
+        ).asJson
       }
+    }
 
-      "return internal error if call to fetch mtd fails" in {
-        when(
-          authConnector.authorise(
-            any(),
-            eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
-          )(any(), any())
+    "return internal error if call to fetch mtd fails due to data quality errors" in {
+      when(
+        authConnector.authorise(
+          any(),
+          eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+        )(any(), any())
+      )
+        .thenReturn(Future.successful(new ~(Some(Agent), lowConfidence)))
+      when(
+        authConnector.authorise(eqTo(principleAgentEnrolments), eqTo(EmptyRetrieval))(
+          any(),
+          any()
         )
-          .thenReturn(Future.successful(new ~(Some(Agent), lowConfidence)))
-        when(
-          authConnector.authorise(eqTo(principleAgentEnrolments), eqTo(EmptyRetrieval))(
-            any(),
-            any()
+      )
+        .thenReturn(Future.successful(()))
+      when(selfAssessmentService.getMtdIdFromUtr(any())(any()))
+        .thenReturn(Future.failed(Downstream_Error))
+
+      running(app) {
+        val controller =
+          new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+            ExecutionContext.global
           )
-        )
-          .thenReturn(Future.successful(()))
-        when(selfAssessmentService.getMtdIdFromUtr(any())(any()))
-          .thenReturn(Future.failed(Downstream_Error))
-
-        running(app) {
-          val controller =
-            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
-              ExecutionContext.global
-            )
-          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-          status(result) mustBe SERVICE_UNAVAILABLE
-          contentAsJson(result) mustBe ApiErrorResponses(
-            serviceUnavailableMessage
-          ).asJson
-        }
+        val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+        status(result) mustBe INTERNAL_SERVER_ERROR
+        contentAsJson(result) mustBe ApiErrorResponses(
+          internalErrorMEssage
+        ).asJson
       }
-
     }
 
   }
+
 }

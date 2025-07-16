@@ -17,7 +17,7 @@
 package connectors
 
 import config.AppConfig
-import models.ServiceErrors.Downstream_Error
+import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
 import models.{MtdId, ServiceErrors}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -34,7 +34,8 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 => response.json.as[MtdId].toFuture
-        case _                                  => Future.failed(Downstream_Error)
+        case response if response.status == 500 => Future.failed(Downstream_Error)
+        case _                                  => Future.failed(Service_Currently_Unavailable)
       }
   }
 }

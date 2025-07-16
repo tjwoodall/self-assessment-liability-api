@@ -34,7 +34,8 @@ class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppCon
       .flatMap {
         case response if response.status == 200 =>
           Future.successful((response.json \ "ids" \ "nino").as[String])
-        case _ => Future.failed(Downstream_Error)
+        case response if response.status == 500 => Future.failed(Downstream_Error)
+        case _                                  => Future.failed(Service_Currently_Unavailable)
       }
   }
 }
