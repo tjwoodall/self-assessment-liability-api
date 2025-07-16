@@ -47,7 +47,7 @@ trait SpecBase
   implicit lazy val hc: HeaderCarrier = HeaderCarrier()
 
   val jsonSuccessResponse: String =
-   """
+    """
       |{
       |  "balanceDetails": {
       |  "totalOverdueBalance": 500.00,
