@@ -31,7 +31,8 @@ import utils.SelfAssessmentEnrolments.*
 import utils.UtrValidator
 import utils.constants.ErrorMessageConstansts.{
   badRequestMessage,
-  internalErrorMEssage,
+  forbiddenMessage,
+  serviceUnavailableMessage,
   unauthorisedMessage
 }
 
@@ -64,8 +65,10 @@ class AuthenticateRequestController(
             case Some(Organisation) ~ _ => dealWithNonAgentAffinity(utr)(request, block)
             case Some(Agent) ~ _        => authenticateAgent(utr)(request, block)
           }
-          .recover { case _: NoActiveSession =>
-            BadRequest(ApiErrorResponses(badRequestMessage).asJson)
+          .recover {
+            case _: NoActiveSession =>
+              BadRequest(ApiErrorResponses(badRequestMessage).asJson)
+            case _ => ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson)
           }
       } else {
         Future.successful(BadRequest(ApiErrorResponses(badRequestMessage).asJson))
@@ -103,8 +106,9 @@ class AuthenticateRequestController(
         }
         .recoverWith {
           case _: AuthorisationException =>
-            Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
-          case error => InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+            Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
+          case error =>
+            ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
         }
     }
   }
@@ -124,12 +128,13 @@ class AuthenticateRequestController(
         }
         .recoverWith {
           case _: AuthorisationException =>
-            Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
-          case error => InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+            Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
+          case error =>
+            ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
         }
 
     }.recoverWith { case _: AuthorisationException =>
-      Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+      Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
     }
 
   }

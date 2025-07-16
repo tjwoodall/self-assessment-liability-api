@@ -38,7 +38,6 @@ import utils.SelfAssessmentEnrolments.{
   mtdSaEnrolment,
   principleAgentEnrolments
 }
-import utils.constants.EnrolmentConstants.*
 import utils.constants.ErrorMessageConstansts.*
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -110,6 +109,26 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
           status(result) mustBe BAD_REQUEST
           contentAsJson(result) mustBe ApiErrorResponses(
             badRequestMessage
+          ).asJson
+        }
+      }
+      "return service unavailable if auth is down" in {
+        running(app) {
+          val controller =
+            new AuthenticateRequestController(cc, selfAssessmentService, authConnector)(
+              ExecutionContext.global
+            )
+          val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
+          when(
+            authConnector.authorise(
+              any(),
+              eqTo(Retrievals.affinityGroup and Retrievals.confidenceLevel)
+            )(any(), any())
+          )
+            .thenReturn(throw new Exception("something went wrong"))
+          status(result) mustBe SERVICE_UNAVAILABLE
+          contentAsJson(result) mustBe ApiErrorResponses(
+            serviceUnavailableMessage
           ).asJson
         }
       }
@@ -222,13 +241,13 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
             )
           val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
 
-          status(result) mustBe UNAUTHORIZED
+          status(result) mustBe FORBIDDEN
           contentAsJson(result) mustBe ApiErrorResponses(
-            unauthorisedMessage
+            forbiddenMessage
           ).asJson
         }
       }
-      "return internal error if call to fetch mtd id fails" in {
+      "return service unavailable if call to fetch mtd id fails" in {
         when(
           authConnector.authorise(
             any(),
@@ -252,9 +271,9 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
             )
           val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
 
-          status(result) mustBe INTERNAL_SERVER_ERROR
+          status(result) mustBe SERVICE_UNAVAILABLE
           contentAsJson(result) mustBe ApiErrorResponses(
-            internalErrorMEssage
+            serviceUnavailableMessage
           ).asJson
         }
       }
@@ -347,13 +366,13 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
             )
           val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
 
-          status(result) mustBe UNAUTHORIZED
+          status(result) mustBe FORBIDDEN
           contentAsJson(result) mustBe ApiErrorResponses(
-            unauthorisedMessage
+            forbiddenMessage
           ).asJson
         }
       }
-      "return internal error if call to fetch mtd id fails" in {
+      "return service unavailable error if call to fetch mtd id fails" in {
         when(
           authConnector.authorise(
             any(),
@@ -377,9 +396,9 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
             )
           val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
 
-          status(result) mustBe INTERNAL_SERVER_ERROR
+          status(result) mustBe SERVICE_UNAVAILABLE
           contentAsJson(result) mustBe ApiErrorResponses(
-            internalErrorMEssage
+            serviceUnavailableMessage
           ).asJson
         }
       }
@@ -422,7 +441,7 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
         }
       }
 
-      "return unauthorised if agent/client relationship is not established via the utr provided" in {
+      "return FORBIDDEN if agent/client relationship is not established via the utr provided" in {
         when(
           authConnector.authorise(
             any(),
@@ -453,9 +472,9 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
               ExecutionContext.global
             )
           val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-          status(result) mustBe UNAUTHORIZED
+          status(result) mustBe FORBIDDEN
           contentAsJson(result) mustBe ApiErrorResponses(
-            unauthorisedMessage
+            forbiddenMessage
           ).asJson
         }
       }
@@ -484,9 +503,9 @@ class AuthenticateRequestControllerSpec extends SpecBase with HttpWireMock {
               ExecutionContext.global
             )
           val result = methodNeedingAuthentication(validUtr, controller)(FakeRequest())
-          status(result) mustBe INTERNAL_SERVER_ERROR
+          status(result) mustBe SERVICE_UNAVAILABLE
           contentAsJson(result) mustBe ApiErrorResponses(
-            internalErrorMEssage
+            serviceUnavailableMessage
           ).asJson
         }
       }
