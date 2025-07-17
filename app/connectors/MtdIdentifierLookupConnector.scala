@@ -19,9 +19,10 @@ package connectors
 import config.AppConfig
 import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
 import models.{MtdId, ServiceErrors}
+import play.api.libs.json.JsResultException
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, JsValidationException, StringContextOps}
 import utils.FutureConverter.FutureOps
 
 import javax.inject.Inject
@@ -35,7 +36,11 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
       .flatMap {
         case response if response.status == 200 => response.json.as[MtdId].toFuture
         case response if response.status == 500 => Future.failed(Downstream_Error)
+        case response if response.status == 400 => Future.failed(Downstream_Error)
         case _                                  => Future.failed(Service_Currently_Unavailable)
+      }
+      .recoverWith { case _: JsResultException =>
+        Future.failed(Downstream_Error)
       }
   }
 }

@@ -20,6 +20,7 @@ import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
 import play.api.Application
 import play.api.http.Status.*
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Json
 import shared.{HttpWireMock, SpecBase}
 
 class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
@@ -54,13 +55,24 @@ class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
       val result = connector.getNino("utr")
       result.futureValue mustBe nino
     }
-    "return erro in case of any other response" in {
+    "return Service_Currently_Unavailable erro in case of any other response else than 404 200 and 500" in {
       simmulateGet(serviceUrl("invalidUtr"), BAD_REQUEST, "")
       val result = connector.getNino("invalidUtr")
       result.failed.futureValue mustBe Service_Currently_Unavailable
     }
-    "return erro in case of a 500 response" in {
+    "return Downstream_Error erro in case of a 500 response" in {
       simmulateGet(serviceUrl("invalidUtr"), INTERNAL_SERVER_ERROR, "")
+      val result = connector.getNino("invalidUtr")
+      result.failed.futureValue mustBe Downstream_Error
+    }
+    "return Downstream_Error erro in case of a 404 response" in {
+      simmulateGet(serviceUrl("invalidUtr"), NOT_FOUND, "")
+      val result = connector.getNino("invalidUtr")
+      result.failed.futureValue mustBe Downstream_Error
+    }
+    "return Downstream_Error when JSON validation fails" in {
+      val invalidJsonResponse = Json.obj("invalidField" -> "invalidValue").toString()
+      simmulateGet(serviceUrl("nino"), OK, invalidJsonResponse)
       val result = connector.getNino("invalidUtr")
       result.failed.futureValue mustBe Downstream_Error
     }

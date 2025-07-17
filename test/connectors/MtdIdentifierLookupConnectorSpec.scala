@@ -48,11 +48,21 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
       result.failed.futureValue mustBe Downstream_Error
 
     }
-    "return Downstream_Error error in case of any other response" in {
-      simmulateGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
+    "return Service_Currently_Unavailable error in case of any other response" in {
+      simmulateGet(serviceUrl("invalidNino"), UNAUTHORIZED, "")
       val result = connector.getMtdId("invalidNino")
       result.failed.futureValue mustBe Service_Currently_Unavailable
-
+    }
+    "return Downstream_Error error in case of bad request response" in {
+      simmulateGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
+      val result = connector.getMtdId("invalidNino")
+      result.failed.futureValue mustBe Downstream_Error
+    }
+    "return Downstream_Error when JSON validation fails" in {
+      val invalidJsonResponse = Json.obj("invalidField" -> "invalidValue").toString()
+      simmulateGet(serviceUrl("nino"), OK, invalidJsonResponse)
+      val result = connector.getMtdId("nino")
+      result.failed.futureValue mustBe Downstream_Error
     }
   }
 
