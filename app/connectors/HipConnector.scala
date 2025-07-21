@@ -35,8 +35,9 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
   )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HipResponse] = {
     client
       .get(
-        url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details?fromDate=$fromDate"
+        url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details"
       )
+      .transform(_.withQueryStringParameters("fromDate" -> fromDate))
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
