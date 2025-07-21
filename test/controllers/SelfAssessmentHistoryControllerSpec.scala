@@ -18,8 +18,11 @@ package controllers
 
 import config.AppConfig
 import models.ApiErrorResponses
+import models.ServiceErrors.*
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
+import org.scalatest.prop.TableDrivenPropertyChecks.forEvery
+import org.scalatest.prop.Tables.Table
 import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -32,8 +35,7 @@ import shared.{HttpWireMock, SpecBase}
 import uk.gov.hmrc.auth.core.AffinityGroup.Individual
 import uk.gov.hmrc.auth.core.{AuthConnector, ConfidenceLevel}
 import uk.gov.hmrc.auth.core.syntax.retrieved.authSyntaxForRetrieved
-import utils.constants.ErrorMessageConstants.internalErrorMessage
-import utils.FutureConverter.FutureOps
+import utils.constants.ErrorMessageConstants.*
 
 import scala.concurrent.Future
 
@@ -73,25 +75,85 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
     "getting self assessment data" should {
       "return details as JSON when successful" in {
         when(selfAssessmentService.getHipData(any(), any())(any()))
-          .thenReturn(Future.successful(Ok(jsonResponse)))
+          .thenReturn(Future.successful(hipResponse))
 
         running(app) {
           val result = controllerMethod(utr, date, controller)(FakeRequest())
 
           status(result) mustBe OK
-          contentAsJson(result) mustBe Json.parse(jsonResponse)
+          contentAsJson(result) mustBe Json.parse(jsonSuccessResponse)
         }
       }
 
-      "return an error when the request fails" in {
+      "return Bad Request for relevant HIP error(s)" in {
         when(selfAssessmentService.getHipData(any(), any())(any()))
-          .thenReturn(InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture)
+          .thenReturn(Future.failed(No_Payments_Found_For_UTR))
 
         running(app) {
           val result = controllerMethod(utr, date, controller)(FakeRequest())
 
-          status(result) mustBe INTERNAL_SERVER_ERROR
-          contentAsJson(result) mustBe ApiErrorResponses(internalErrorMessage).asJson
+          status(result) mustBe BAD_REQUEST
+          contentAsJson(result) mustBe ApiErrorResponses(badRequestMessage).asJson
+        }
+      }
+
+      "return Unauthorized for relevant HIP error(s)" in {
+        when(selfAssessmentService.getHipData(any(), any())(any()))
+          .thenReturn(Future.failed(HIP_Unauthorised))
+
+        running(app) {
+          val result = controllerMethod(utr, date, controller)(FakeRequest())
+
+          status(result) mustBe UNAUTHORIZED
+          contentAsJson(result) mustBe ApiErrorResponses(unauthorisedMessage).asJson
+        }
+      }
+
+      "return Forbidden for relevant HIP error(s)" in {
+        when(selfAssessmentService.getHipData(any(), any())(any()))
+          .thenReturn(Future.failed(HIP_Forbidden))
+
+        running(app) {
+          val result = controllerMethod(utr, date, controller)(FakeRequest())
+
+          status(result) mustBe FORBIDDEN
+          contentAsJson(result) mustBe ApiErrorResponses(forbiddenMessage).asJson
+        }
+      }
+
+      "return Internal Server Error for relevant HIP error(s)" in {
+        forEvery(
+          Table(
+            "Internal Server Errors",
+            Invalid_Correlation_Id,
+            Invalid_UTR,
+            HIP_Server_Error,
+            HIP_Bad_Gateway,
+            Downstream_Error,
+            Throwable()
+          )
+        ) { serviceError =>
+          when(selfAssessmentService.getHipData(any(), any())(any()))
+            .thenReturn(Future.failed(serviceError))
+
+          running(app) {
+            val result = controllerMethod(utr, date, controller)(FakeRequest())
+
+            status(result) mustBe INTERNAL_SERVER_ERROR
+            contentAsJson(result) mustBe ApiErrorResponses(internalErrorMessage).asJson
+          }
+        }
+      }
+
+      "return Service Unavailable for relevant HIP error(s)" in {
+        when(selfAssessmentService.getHipData(any(), any())(any()))
+          .thenReturn(Future.failed(HIP_Service_Unavailable))
+
+        running(app) {
+          val result = controllerMethod(utr, date, controller)(FakeRequest())
+
+          status(result) mustBe SERVICE_UNAVAILABLE
+          contentAsJson(result) mustBe ApiErrorResponses(serviceUnavailableMessage).asJson
         }
       }
     }

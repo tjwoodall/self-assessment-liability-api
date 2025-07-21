@@ -17,14 +17,8 @@
 package services
 
 import connectors.*
-import models.{ApiErrorResponses, HipResponse}
-import models.ServiceErrors.*
-import play.api.libs.json.Json
-import play.api.mvc.Result
-import play.api.mvc.Results.*
+import models.HipResponse
 import uk.gov.hmrc.http.HeaderCarrier
-import utils.constants.ErrorMessageConstants.*
-import utils.FutureConverter.FutureOps
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
@@ -41,31 +35,9 @@ class SelfAssessmentService @Inject() (
     } yield mtdId.mtdbsa
   }
 
-  def getHipData(utr: String, fromDate: String)(implicit hc: HeaderCarrier): Future[Result] = {
-    hipConnector
-      .getSelfAssessmentData(utr, fromDate)
-      .flatMap { hipResponse =>
-        Future.successful(Ok(Json.toJson(hipResponse)))
-      }
-      .recoverWith {
-        case _: Invalid_Correlation_Id.type =>
-          InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-        case _: HIP_Unauthorised.type =>
-          Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
-        case _: HIP_Forbidden.type => Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
-        case _: No_Payments_Found_For_UTR.type =>
-          BadRequest(ApiErrorResponses(badRequestMessage).asJson).toFuture
-        case _: Invalid_UTR.type =>
-          InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-        case _: HIP_Server_Error.type =>
-          InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-        case _: HIP_Bad_Gateway.type =>
-          InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-        case _: HIP_Service_Unavailable.type =>
-          ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
-        case _: Downstream_Error.type =>
-          InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-        case _: Any => InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-      }
+  def getHipData(utr: String, fromDate: String)(implicit hc: HeaderCarrier): Future[HipResponse] = {
+    for {
+      hipResponse <- hipConnector.getSelfAssessmentData(utr, fromDate)
+    } yield hipResponse
   }
 }

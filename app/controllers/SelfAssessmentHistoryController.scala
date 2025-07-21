@@ -17,12 +17,18 @@
 package controllers
 
 import config.AppConfig
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import models.ApiErrorResponses
+import models.ServiceErrors.*
+import play.api.libs.json.Json
+import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
+import play.api.mvc.Results.*
 import services.SelfAssessmentService
 import uk.gov.hmrc.auth.core.AuthConnector
+import utils.constants.ErrorMessageConstants.*
+import utils.FutureConverter.FutureOps
 
 import javax.inject.Inject
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentHistoryController @Inject() (
     override val authConnector: AuthConnector,
@@ -33,6 +39,32 @@ class SelfAssessmentHistoryController @Inject() (
 
   def getYourSelfAssessmentData(utr: String, fromDate: Option[String]): Action[AnyContent] =
     authorisedAction(utr) { implicit request =>
-      service.getHipData(utr, fromDate.getOrElse("2025-04-06"))
+      service
+        .getHipData(utr, fromDate.getOrElse("2025-04-06"))
+        .flatMap { hipResponse =>
+          Future.successful(Ok(Json.toJson(hipResponse)))
+        }
+        .recoverWith {
+          case _: Invalid_Correlation_Id.type =>
+            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
+          case _: HIP_Unauthorised.type =>
+            Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+          case _: HIP_Forbidden.type =>
+            Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
+          case _: No_Payments_Found_For_UTR.type =>
+            BadRequest(ApiErrorResponses(badRequestMessage).asJson).toFuture
+          case _: Invalid_UTR.type =>
+            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
+          case _: HIP_Server_Error.type =>
+            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
+          case _: HIP_Bad_Gateway.type =>
+            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
+          case _: HIP_Service_Unavailable.type =>
+            ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
+          case _: Downstream_Error.type =>
+            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
+          case _: Any =>
+            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
+        }
     }
 }
