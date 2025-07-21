@@ -1,5 +1,4 @@
 {
-  "scopes": [],
   "api": {
     "name": "View Self Assessment Account",
     "description": "This API provides a breakdown of Self Assessment liability, showing overdue, payable and pending amounts, within HMRC tax account services.",
