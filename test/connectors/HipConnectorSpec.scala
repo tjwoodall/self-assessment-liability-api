@@ -21,6 +21,8 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import shared.{HttpWireMock, SpecBase}
 
+import java.time.LocalDate
+
 class HipConnectorSpec extends SpecBase with HttpWireMock {
 
   override lazy val app: Application = new GuiceApplicationBuilder()
@@ -32,7 +34,9 @@ class HipConnectorSpec extends SpecBase with HttpWireMock {
     app.injector.instanceOf[HipConnector]
   private val utr: String = "1234567890"
   private val fromDate: String = "2025-04-06"
-  private val serviceUrl = s"/self-assessment/account/$utr/liability-details?fromDate=$fromDate"
+  private val toDate: String = LocalDate.now.toString
+  private val serviceUrl =
+    s"/self-assessment/account/$utr/liability-details?dateFrom=$fromDate&dateTo=$toDate"
 
   "getSelfAssessmentData" should {
     "return JSON associated with the utr and date if 200 response is received" in {

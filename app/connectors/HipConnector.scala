@@ -25,6 +25,7 @@ import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 import utils.FutureConverter.FutureOps
 
+import java.time.LocalDate
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -33,11 +34,16 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
       utr: String,
       fromDate: String
   )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HipResponse] = {
+    val queryParameters = Seq(
+      "dateFrom" -> fromDate,
+      "dateTo" -> LocalDate.now.toString // TODO: Implement logic to generate dateTo.
+    )
+
     client
       .get(
         url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details"
       )
-      .transform(_.withQueryStringParameters("fromDate" -> fromDate))
+      .transform(_.withQueryStringParameters(queryParameters*))
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
