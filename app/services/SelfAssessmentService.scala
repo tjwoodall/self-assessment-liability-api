@@ -20,6 +20,7 @@ import connectors.*
 import models.HipResponse
 import uk.gov.hmrc.http.HeaderCarrier
 
+import java.time.LocalDate
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -36,8 +37,10 @@ class SelfAssessmentService @Inject() (
   }
 
   def getHipData(utr: String, fromDate: String)(implicit hc: HeaderCarrier): Future[HipResponse] = {
+    val toDate: String = LocalDate.now.toString // TODO: Implement logic to generate dateTo.
+
     for {
-      hipResponse <- hipConnector.getSelfAssessmentData(utr, fromDate)
+      hipResponse <- hipConnector.getSelfAssessmentData(utr, fromDate, toDate)
     } yield hipResponse
   }
 }

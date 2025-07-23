@@ -77,7 +77,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
 
     "getting HIP data" should {
       "return details as a HipResponse object when successful" in {
-        when(hipConnector.getSelfAssessmentData(any(), any())(any(), any()))
+        when(hipConnector.getSelfAssessmentData(any(), any(), any())(any(), any()))
           .thenReturn(Future.successful(hipResponse))
 
         running(app) {
@@ -88,7 +88,7 @@ class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
       }
 
       "return an error when the request fails" in {
-        when(hipConnector.getSelfAssessmentData(any(), any())(any(), any()))
+        when(hipConnector.getSelfAssessmentData(any(), any(), any())(any(), any()))
           .thenReturn(Future.failed(HIP_Service_Unavailable))
 
         running(app) {

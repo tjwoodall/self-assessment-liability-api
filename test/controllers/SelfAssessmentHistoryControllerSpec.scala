@@ -57,10 +57,6 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
       appConfig,
       ec
     )
-  private val jsonResponse: String = """
-    |{
-    |  "someJson": []
-    |}""".stripMargin
 
   private def controllerMethod(
       utr: String,
