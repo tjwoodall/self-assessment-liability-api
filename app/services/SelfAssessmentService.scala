@@ -37,7 +37,7 @@ class SelfAssessmentService @Inject() (
   }
 
   def getHipData(utr: String, fromDate: String)(implicit hc: HeaderCarrier): Future[HipResponse] = {
-    val toDate: String = LocalDate.now.toString // TODO: Implement logic to generate dateTo.
+    val toDate: String = LocalDate.now.toString // TODO: DI-565 to implement logic to generate dateTo.
 
     for {
       hipResponse <- hipConnector.getSelfAssessmentData(utr, fromDate, toDate)

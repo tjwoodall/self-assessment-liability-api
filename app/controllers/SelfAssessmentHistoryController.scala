@@ -45,26 +45,34 @@ class SelfAssessmentHistoryController @Inject() (
           Future.successful(Ok(Json.toJson(hipResponse)))
         }
         .recoverWith {
-          case _: Invalid_Correlation_Id.type =>
-            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-          case _: HIP_Unauthorised.type =>
-            Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
-          case _: HIP_Forbidden.type =>
-            Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
-          case _: No_Payments_Found_For_UTR.type =>
-            BadRequest(ApiErrorResponses(badRequestMessage).asJson).toFuture
-          case _: Invalid_UTR.type =>
-            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-          case _: HIP_Server_Error.type =>
-            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-          case _: HIP_Bad_Gateway.type =>
-            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-          case _: HIP_Service_Unavailable.type =>
-            ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
-          case _: Downstream_Error.type =>
-            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
-          case _: Any =>
-            InternalServerError(ApiErrorResponses(internalErrorMessage).asJson).toFuture
+          handleFailedRequest
         }
     }
+
+  private def handleFailedRequest: PartialFunction[Throwable, Future[Result]] = {
+    case HIP_Unauthorised =>
+      constructErrorResponse(Unauthorized, unauthorisedMessage)
+    case HIP_Forbidden =>
+      constructErrorResponse(Forbidden, forbiddenMessage)
+    case No_Payments_Found_For_UTR =>
+      constructErrorResponse(BadRequest, badRequestMessage)
+    case HIP_Service_Unavailable =>
+      constructErrorResponse(ServiceUnavailable, serviceUnavailableMessage)
+    case Invalid_Correlation_Id =>
+      constructErrorResponse(InternalServerError, internalErrorMessage)
+    case Invalid_UTR =>
+      constructErrorResponse(InternalServerError, internalErrorMessage)
+    case HIP_Server_Error =>
+      constructErrorResponse(InternalServerError, internalErrorMessage)
+    case HIP_Bad_Gateway =>
+      constructErrorResponse(InternalServerError, internalErrorMessage)
+    case Downstream_Error =>
+      constructErrorResponse(InternalServerError, internalErrorMessage)
+    case _ =>
+      constructErrorResponse(InternalServerError, internalErrorMessage)
+  }
+
+  private def constructErrorResponse(status: Status, message: String): Future[Result] = {
+    status(ApiErrorResponses(message).asJson).toFuture
+  }
 }
