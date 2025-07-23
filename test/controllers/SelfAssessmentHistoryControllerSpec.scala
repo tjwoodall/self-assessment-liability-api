@@ -27,7 +27,7 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import play.api.mvc.ControllerComponents
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import services.SelfAssessmentService
@@ -47,7 +47,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
   private val appConfig: AppConfig = mock[AppConfig]
   private val cc: ControllerComponents = app.injector.instanceOf[ControllerComponents]
   private val utr: String = "1234567890"
-  private val date: Option[String] = Some("2025-04-06")
+  private val fromDate: Option[String] = Some("2025-04-06")
   private val controller =
     new SelfAssessmentHistoryController(
       authConnector,
@@ -57,12 +57,6 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
       appConfig,
       ec
     )
-
-  private def controllerMethod(
-      utr: String,
-      fromDate: Option[String],
-      controller: SelfAssessmentHistoryController
-  ): Action[AnyContent] = controller.getYourSelfAssessmentData(utr, fromDate)
 
   "SelfAssessmentHistoryControllerSpec" when {
     when(authConnector.authorise(any(), any())(any(), any()))
@@ -74,7 +68,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.successful(hipResponse))
 
         running(app) {
-          val result = controllerMethod(utr, date, controller)(FakeRequest())
+          val result = controller.getYourSelfAssessmentData(utr, fromDate)(FakeRequest())
 
           status(result) mustBe OK
           contentAsJson(result) mustBe Json.parse(jsonSuccessResponse)
@@ -86,7 +80,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(No_Payments_Found_For_UTR))
 
         running(app) {
-          val result = controllerMethod(utr, date, controller)(FakeRequest())
+          val result = controller.getYourSelfAssessmentData(utr, fromDate)(FakeRequest())
 
           status(result) mustBe BAD_REQUEST
           contentAsJson(result) mustBe ApiErrorResponses(badRequestMessage).asJson
@@ -98,7 +92,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(HIP_Unauthorised))
 
         running(app) {
-          val result = controllerMethod(utr, date, controller)(FakeRequest())
+          val result = controller.getYourSelfAssessmentData(utr, fromDate)(FakeRequest())
 
           status(result) mustBe UNAUTHORIZED
           contentAsJson(result) mustBe ApiErrorResponses(unauthorisedMessage).asJson
@@ -110,7 +104,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(HIP_Forbidden))
 
         running(app) {
-          val result = controllerMethod(utr, date, controller)(FakeRequest())
+          val result = controller.getYourSelfAssessmentData(utr, fromDate)(FakeRequest())
 
           status(result) mustBe FORBIDDEN
           contentAsJson(result) mustBe ApiErrorResponses(forbiddenMessage).asJson
@@ -133,7 +127,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
             .thenReturn(Future.failed(serviceError))
 
           running(app) {
-            val result = controllerMethod(utr, date, controller)(FakeRequest())
+            val result = controller.getYourSelfAssessmentData(utr, fromDate)(FakeRequest())
 
             status(result) mustBe INTERNAL_SERVER_ERROR
             contentAsJson(result) mustBe ApiErrorResponses(internalErrorMessage).asJson
@@ -146,7 +140,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(HIP_Service_Unavailable))
 
         running(app) {
-          val result = controllerMethod(utr, date, controller)(FakeRequest())
+          val result = controller.getYourSelfAssessmentData(utr, fromDate)(FakeRequest())
 
           status(result) mustBe SERVICE_UNAVAILABLE
           contentAsJson(result) mustBe ApiErrorResponses(serviceUnavailableMessage).asJson
