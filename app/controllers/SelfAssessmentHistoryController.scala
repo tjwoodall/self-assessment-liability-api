@@ -58,17 +58,8 @@ class SelfAssessmentHistoryController @Inject() (
       constructErrorResponse(BadRequest, badRequestMessage)
     case HIP_Service_Unavailable =>
       constructErrorResponse(ServiceUnavailable, serviceUnavailableMessage)
-    case Invalid_Correlation_Id =>
-      constructErrorResponse(InternalServerError, internalErrorMessage)
-    case Invalid_UTR =>
-      constructErrorResponse(InternalServerError, internalErrorMessage)
-    case HIP_Server_Error =>
-      constructErrorResponse(InternalServerError, internalErrorMessage)
-    case HIP_Bad_Gateway =>
-      constructErrorResponse(InternalServerError, internalErrorMessage)
-    case Downstream_Error =>
-      constructErrorResponse(InternalServerError, internalErrorMessage)
-    case _ =>
+    case Invalid_Correlation_Id | Invalid_UTR | HIP_Server_Error | HIP_Bad_Gateway |
+        Downstream_Error | _ =>
       constructErrorResponse(InternalServerError, internalErrorMessage)
   }
 
