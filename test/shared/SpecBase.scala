@@ -100,7 +100,7 @@ trait SpecBase
       |"paymentHistoryDetails": [
       |  {
       |    "paymentAmount": 500.00,
-      |    "paymentReference": "payment reference id",
+      |    "paymentId": "payment reference id",
       |    "paymentMethod": "payment method",
       |    "paymentDate": "2025-04-11",
       |    "dateProcessed": "2025-04-15",
