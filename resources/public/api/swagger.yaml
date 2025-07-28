@@ -38,7 +38,7 @@ paths:
             An OAuth 2.0 Bearer Token with the *read:self-assessment* scope.
           required: true
           schema:
-            type: String
+            type: string
             example: "Bearer bb7fed3fe10dd235a2ccda3d50fb"
         - in: query
           name: fromDate
