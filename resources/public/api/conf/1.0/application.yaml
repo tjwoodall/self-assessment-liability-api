@@ -115,7 +115,7 @@ components:
           tokenUrl: https://api.service.hmrc.gov.uk/oauth/token
           refreshUrl: https://api.service.hmrc.gov.uk/oauth/refresh
           scopes:
-            "read:self-assessment": Read self-assessment data
+            read:self-assessment: Grant read self-assessment data
   headers:
     Authorization:
       description: An OAuth 2.0 Bearer Token with the *read:self-assessment* scope.
