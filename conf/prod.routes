@@ -1,4 +1,4 @@
 # Add all the application routes to the app.routes file
-->         /accounts/breakdown/self-assessment                          app.Routes
+->         /                          app.Routes
 ->         /                          health.Routes
 ->         /                          definition.Routes
