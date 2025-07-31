@@ -1,15 +1,4 @@
-
 # self-assessment-liability-api
-
-This is a placeholder README.md for a new repository
-
-* Project structure?
-* Request/Response see: https://github.com/hmrc/citizen-details?tab=readme-ov-file#get-citizen-detailsidnametaxid and https://github.com/hmrc/mtd-identifier-lookup
-** Field detail and explanation
-* Starting the application
-* Running tests
-* Stub info
-* Link to the service guide
 
 More information about this service can be found in the [service guide](https://developer.service.hmrc.gov.uk/guides/self-assessment-liability-service-guide). 
 
@@ -33,13 +22,13 @@ More detail can be found in the [service guide error responses](https://develope
 
 | Status Code | Description                                                                                                                                                                                                                                         |
 |-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 200         | Successful request.                                                                                                                                                                                                                                 |
+| 200         | Successful request: <br/> * The response body contains self-assessment details for the given `utr` and `fromDate`.                                                                                                                                  |
 | 400         | Invalid API implementation caused by (at least) one of: <br/> * Invalid `fromDate` - either malformed or outside of the accepted range (the accepted range is 7 tax years ago to now). <br/> * Invalid `utr`. <br/> * Missing authentication token. |
-| 401         | Unauthorized.                                                                                                                                                                                                                                       |
-| 403         | Forbidden.                                                                                                                                                                                                                                          |
-| 404         | Not Found.                                                                                                                                                                                                                                          |
-| 500         | Internal Server Error.                                                                                                                                                                                                                              |
-| 503         | Service Unavailable.                                                                                                                                                                                                                                |
+| 401         | Unauthorized: <br/> * An agent may not have an active relationship with the client. <br/> * An individual may have a low confidence level.                                                                                                          |
+| 403         | Forbidden: <br/> * An agent may not have registered for Self Assessment or have access to financial data. <br/> * An individual may not be registered with HMRC.                                                                                    |
+| 404         | Not Found: <br/> * The request format is valid but self-assessment data cannot be found.                                                                                                                                                            |
+| 500         | Internal Server Error: <br/> * This API (or another HMRC service this API relies on) has returned an unexpected error for a valid request.                                                                                                          |
+| 503         | Service Unavailable: <br/> * An HMRC service this API relies on is temporarily unavailable.                                                                                                                                                         |
 
 ### Example success response body
 
@@ -163,6 +152,45 @@ More detail can be found in the [service guide error responses](https://develope
   }
 }
 ```
+
+## Stub
+
+This API interacts with internal HMRC services to fetch relevant data. For testing purposes, this API does not interact with the live version of these services but rather a fake _stub_. This _stub_ is a single service which simulates various responses for different request URLs and parameters. The _stub_ service can be found [here](https://github.com/hmrc/self-assessment-liability-stub).
+
+## Testing
+
+This API uses `sbt` to `clean`, `compile`, `test` and `run` the service.
+
+### Unit testing
+
+Unit tests can be run from the project root with the following command:
+```console
+sbt test
+```
+
+### API testing
+
+With the [HMRC Service Manager](https://github.com/hmrc/sm2), this API can be further developed and tested by accessing the HMRC microservices required for this API to function. To test local changes to this repository:
+
+1. Ensure a container runtime is active e.g. Colima:
+```console
+colima start
+```
+2. Start all microservices related to this API:
+```console
+sm2 --start SELF_ASSESSMENT_LIABILITY_API_ALL
+```
+3. Stop the version of this API which was started in the previous command:
+```console
+sm2 --stop SELF_ASSESSMENT_LIABILITY_API
+```
+4. Run the modified version of this API from the root directory:
+```console
+sbt run
+```
+Note: ensure that `sbt clean` and `sbt compile` commands are executed before `sbt run` every time changes are made to the API.
+
+Requests can now be sent to this API, with responses matching any changes in the local code.
 
 ## License
 
