@@ -37,12 +37,18 @@ More detail can be found in the [service guide error responses](https://develope
   "balanceDetails": {
     "totalOverdueBalance": 500,
     "totalPayableBalance": 500,
-    "payableDueDate": "2025-04-31",
+    "earliestPayableDueDate": "2025-04-30",
     "totalPendingBalance": 1500,
-    "pendingDueDate": "2025-07-15",
+    "earliestPendingDueDate": "2025-07-15",
     "totalBalance": 2000,
-    "totalCodedOut": 250,
-    "totalCreditAvailable": 0
+    "totalCreditAvailable": 0,
+    "codedOutDetail": [
+      {
+        "totalAmount": 200,
+        "effectiveStartDate": "2023-04-06",
+        "effectiveEndDate": "2024-04-01"
+      }
+    ]
   },
   "chargeDetails": [
     {
@@ -51,21 +57,16 @@ More detail can be found in the [service guide error responses](https://develope
       "chargeType": "ITSA",
       "chargeAmount": 1250,
       "outstandingAmount": 500,
-      "taxYear": "2024-2025",
-      "dueDate": "2025-04-31",
-      "amendments": {
-        "amendmentDate": "2025-04-15",
-        "amendmentAmount": 500,
-        "newChargeBalance": 750,
-        "paymentMethod": "bank_transfer",
-        "paymentDate": "2025-04-10"
-      },
-      "codedOutDetail": [
+      "taxYear": 2024,
+      "dueDate": "2025-04-30",
+      "amendments": [
         {
-          "amount": 250,
-          "effectiveDate": "2025-04-01",
-          "taxYear": 2024,
-          "effectiveTaxYear": 2025
+          "amendmentDate": "2025-04-15",
+          "amendmentAmount": 500,
+          "updatedChargeAmount": 750,
+          "amendmentReason": "Payment",
+          "paymentMethod": "bank_transfer",
+          "paymentDate": "2025-04-10"
         }
       ]
     },
@@ -77,19 +78,22 @@ More detail can be found in the [service guide error responses](https://develope
       "outstandingAmount": 0,
       "taxYear": 2023,
       "dueDate": "2024-04-01",
-      "interestAmountDue": "20.00",
-      "accruingInterestDateRange": {
+      "outstandingInterestDue": 20,
+      "accruingInterestPeriod": {
         "interestStartDate": "2024-05-01",
         "interestEndDate": "2024-12-01"
       },
-      "interestRate": 0.05,
-      "amendments": {
-        "newChargeBalance": 2000,
-        "amendmentDate": "2024-12-08",
-        "amendmentAmount": 2058.33,
-        "paymentMethod": "bank_transfer",
-        "paymentDate": "2024-12-03"
-      }
+      "accruingInterestRate": 0.05,
+      "amendments": [
+        {
+          "updatedChargeAmount": 2000,
+          "amendmentDate": "2024-12-08",
+          "amendmentAmount": 2058.33,
+          "amendmentReason": "Payment",
+          "paymentMethod": "bank_transfer",
+          "paymentDate": "2024-12-03"
+        }
+      ]
     },
     {
       "chargeId": "KL3456789",
@@ -103,39 +107,39 @@ More detail can be found in the [service guide error responses](https://develope
   ],
   "refundDetails": [
     {
-      "issueDate": "2024-01-10",
+      "refundDate": "2024-01-10",
       "refundMethod": "bank_transfer",
       "refundRequestDate": "2023-12-12",
       "refundRequestAmount": 350,
       "refundDescription": "From overpayment from return 05 APR 23",
       "interestAddedToRefund": 5.25,
-      "refundActualAmount": 355.25,
+      "totalRefundAmount": 355.25,
       "refundStatus": "processed"
     }
   ],
   "paymentHistoryDetails": [
     {
       "paymentAmount": 500,
-      "paymentId": "PAY123456",
+      "paymentReference": "PAY123456",
       "paymentMethod": "bank_transfer",
       "paymentDate": "2025-04-11",
-      "dateProcessed": "2025-04-15",
+      "processedDate": "2025-04-15",
       "allocationReference": "AB1234567"
     },
     {
       "paymentAmount": 2058.33,
-      "paymentId": "PAY112233",
+      "paymentReference": "PAY112233",
       "paymentMethod": "bank_transfer",
       "paymentDate": "2024-12-04",
-      "dateProcessed": "2024-12-08",
+      "processedDate": "2024-12-08",
       "allocationReference": "EF2345678"
     },
     {
       "paymentAmount": 200,
-      "paymentId": "PAY888233",
+      "paymentReference": "PAY888233",
       "paymentMethod": "bank_transfer",
       "paymentDate": "2023-12-04",
-      "dateProcessed": "2023-12-08",
+      "processedDate": "2023-12-08",
       "allocationReference": "EF2345678"
     }
   ]
