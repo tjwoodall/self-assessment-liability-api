@@ -15,7 +15,7 @@ security:
       - User Restricted
       - read:self-assessment
 paths:
-  /accounts/breakdown/self-assessment/{utr}:
+  /self-assessment/account/breakdown/{utr}:
     get:
       tags:
         - Self Assessment Account Details
