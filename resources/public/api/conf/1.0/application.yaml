@@ -8,7 +8,7 @@ servers:
   - url: https://api.service.hmrc.gov.uk
     description: Production
 paths:
-  /accounts/breakdown/self-assessment/{utr}:
+  /self-assessment/account/breakdown/{utr}:
     get:
       tags:
         - Self Assessment Account Details
