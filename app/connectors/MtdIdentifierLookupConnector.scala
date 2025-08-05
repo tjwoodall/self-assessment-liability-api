@@ -22,7 +22,7 @@ import models.{MtdId, ServiceErrors}
 import play.api.libs.json.JsResultException
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, JsValidationException, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 import utils.FutureConverter.FutureOps
 
 import javax.inject.Inject

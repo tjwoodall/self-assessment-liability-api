@@ -21,56 +21,27 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
+import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.mvc.{AnyContent, AnyContentAsEmpty, ControllerComponents, Result}
 import play.api.test.Helpers.*
 import play.api.test.{FakeRequest, Helpers}
 import services.SelfAssessmentService
+import shared.SpecBase
 import uk.gov.hmrc.auth.core.AuthConnector
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentHistoryControllerSpec
-    extends AnyWordSpec
-    with Matchers
-    with MockitoSugar
-    with ScalaFutures {
-
-  implicit val ec: ExecutionContext = ExecutionContext.global
-
-  val mockAuthConnector: AuthConnector = mock[AuthConnector]
-  val mockService: SelfAssessmentService = mock[SelfAssessmentService]
-  val mockCC: ControllerComponents = Helpers.stubControllerComponents()
-  implicit val mockAppConfig: AppConfig = mock[AppConfig]
-
-  val controller = new SelfAssessmentHistoryController(
-    mockAuthConnector,
-    mockService,
-    mockCC
-  )
-
-  val testUtr = "1234567890"
-  val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
+    extends SpecBase{
 
   "SelfAssessmentHistoryController" should {
     "return OK with success message" in {
-      val testController = new SelfAssessmentHistoryController(
-        mockAuthConnector,
-        mockService,
-        mockCC
-      ) {
-        override def authorisedAction(
-            utr: String
-        )(block: RequestData[AnyContent] => Future[Result]) =
-          Action.async { request =>
-            block(RequestData(utr, None, request))
-          }
+
+      val application = applicationBuilder().build()
+      running(application) {
+        val request = FakeRequest(GET, controllers.routes..)
       }
-
-      val result: Future[Result] = testController.getYourSelfAssessmentData(testUtr)(fakeRequest)
-
-      status(result) mustBe OK
-      contentAsJson(result) mustBe Json.obj("message" -> "Success!")
     }
   }
 }

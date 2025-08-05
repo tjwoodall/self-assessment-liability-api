@@ -21,13 +21,16 @@ import uk.gov.hmrc.auth.core.authorise.Predicate
 import utils.constants.EnrolmentConstants.*
 
 object SelfAssessmentEnrolments {
-  def delegatedEnrolments(utr: String, mtdId: String): Predicate = {
+  def delegatedLegacySaEnrolment(utr: String): Predicate = {
     Enrolment(IR_SA_Enrolment_Key)
       .withIdentifier(IR_SA_Identifier, utr)
-      .withDelegatedAuthRule(IR_SA_Delegated_Auth_Rule) or Enrolment(Mtd_Enrolment_Key)
+      .withDelegatedAuthRule(IR_SA_Delegated_Auth_Rule)
+  }
+
+  def delegatedMtdEnrolment(mtdId: String): Predicate = {
+      Enrolment(Mtd_Enrolment_Key)
       .withIdentifier(Mtd_Identifier, mtdId)
       .withDelegatedAuthRule(Mtd_Delegated_Auth_Rule)
-
   }
   val principleAgentEnrolments: Predicate =
     Enrolment(ASA_Enrolment_Key) or Enrolment(IR_SA_AGENT_Key)
