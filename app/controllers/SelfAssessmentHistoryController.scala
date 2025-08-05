@@ -19,20 +19,17 @@ package controllers
 import config.AppConfig
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import services.SelfAssessmentService
-import uk.gov.hmrc.auth.core.AuthConnector
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentHistoryController @Inject() (
-    identify : AuthAction,
+    authenticate : AuthenticateRequestAction,
     cc: ControllerComponents
 )(implicit appConfig: AppConfig, ec: ExecutionContext)
     extends BackendController(cc) {
 
-  def getYourSelfAssessmentData(utr: String): Action[AnyContent] = identify {
+  def getYourSelfAssessmentData(utr: String): Action[AnyContent] = authenticate(utr) {
     implicit request =>
      Ok(Json.obj("message" -> "Success!"))
   }

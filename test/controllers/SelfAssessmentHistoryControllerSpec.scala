@@ -34,13 +34,38 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentHistoryControllerSpec
     extends SpecBase{
+  def createBypassAuthAction(): AuthenticateRequestAction = {
+    val mockAuth = mock[AuthenticateRequestAction]
+
+    when(mockAuth.apply(any[String])).thenAnswer { invocation =>
+      val utr = invocation.getArgument[String](0)
+
+      new ActionBuilder[RequestData, AnyContent] {
+        override def parser = play.api.mvc.BodyParsers.Default.anyContent
+        override protected def executionContext = ExecutionContext.global
+
+        override def invokeBlock[A](request: play.api.mvc.Request[A], block: RequestData[A] => Future[Result]): Future[Result] = {
+          val requestData = RequestData(utr, None, request)
+          block(requestData)
+        }
+      }
+    }
+    mockAuth
+  }
 
   "SelfAssessmentHistoryController" should {
     "return OK with success message" in {
 
-      val application = applicationBuilder().build()
+      val application = applicationBuilder()
+        .overrides(bind[AuthenticateRequestAction].toInstance(createBypassAuthAction()))
+        .build()
+
       running(application) {
-        val request = FakeRequest(GET, controllers.routes..)
+        val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
+        val result = controller.getYourSelfAssessmentData(testUtr)(fakeRequest)
+
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.obj("message" -> "Success!")
       }
     }
   }

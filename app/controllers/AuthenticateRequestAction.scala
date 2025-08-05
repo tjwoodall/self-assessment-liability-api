@@ -16,6 +16,7 @@
 
 package controllers
 
+import config.AppConfig
 import models.ServiceErrors.Downstream_Error
 import models.{ApiErrorResponses, RequestData}
 import play.api.Logging
@@ -38,33 +39,30 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 
-trait AuthAction extends ActionBuilder[RequestData, AnyContent]
-  with AuthorisedFunctions  
 @Singleton
 class AuthenticateRequestAction @Inject()(
-                                                  selfAssessmentService: SelfAssessmentService,
-                                                  authConnector: AuthConnector,
-                                                  bodyParsers: PlayBodyParsers
-                                                )(implicit ec: ExecutionContext) extends Logging {
+                                           selfAssessmentService: SelfAssessmentService,
+                                           authConnector: AuthConnector,
+                                           bodyParsers: PlayBodyParsers
+                                         )(implicit ec: ExecutionContext, config: AppConfig) extends Logging {
 
-  private val minimumConfidence = ConfidenceLevel.L250
+  def apply(utr: String): ActionBuilder[RequestData, AnyContent] = {
+    new AuthActionImpl(utr, selfAssessmentService, authConnector, bodyParsers)
+  }
 
-  def apply(utr: String): ActionBuilder[RequestData, AnyContent] =
-    new AuthenticateRequestActionImpl(utr, selfAssessmentService, authConnector, bodyParsers)
-
-  private class AuthenticateRequestActionImpl(
-                                               utr: String,
-                                               selfAssessmentService: SelfAssessmentService,
-                                               override val authConnector: AuthConnector,
-                                               bodyParsers: PlayBodyParsers
-                                             ) extends  AuthAction
-    with Logging {
+  private class AuthActionImpl(
+                                utr: String,
+                                selfAssessmentService: SelfAssessmentService,
+                                override val authConnector: AuthConnector,
+                                bodyParsers: PlayBodyParsers
+                              ) extends ActionBuilder[RequestData, AnyContent] with AuthorisedFunctions with Logging {
 
     override def parser: BodyParser[AnyContent] = bodyParsers.anyContent
+
     override protected def executionContext: ExecutionContext = ec
 
-    override def invokeBlock[A](implicit request: Request[A], block: RequestData[A] => Future[Result]): Future[Result] = {
-
+    override def invokeBlock[A](request: Request[A], block: RequestData[A] => Future[Result]): Future[Result] = {
+      implicit val req: Request[A] = request
       implicit val headerCarrier: HeaderCarrier = HeaderCarrierConverter.fromRequest(request)
 
       val isUtrValid = UtrValidator.isValidUtr(utr)
@@ -72,37 +70,41 @@ class AuthenticateRequestAction @Inject()(
         authorised()
           .retrieve(affinityGroup and confidenceLevel) {
             case Some(Individual) ~ userConfidence =>
-              dealWithSelfAssessmentIndividual(userConfidence, utr)(request, block)
-            case Some(Organisation) ~ _ => dealWithNonAgentAffinity(utr)(request, block)
-            case Some(Agent) ~ _        => authenticateAgent(utr)(request, block)
+              dealWithSelfAssessmentIndividual(userConfidence, utr, request, block)
+            case Some(Organisation) ~ _ =>
+              dealWithNonAgentAffinity(utr, request, block)
+            case Some(Agent) ~ _ =>
+              authenticateAgent(utr, request, block)
           }
           .recover {
             case _: NoActiveSession =>
-             BadRequest(ApiErrorResponses(badRequestMessage).asJson)
-            case _ =>  ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson)
+              BadRequest(ApiErrorResponses(badRequestMessage).asJson)
+            case _ =>
+              ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson)
           }
       } else {
         Future.successful(BadRequest(ApiErrorResponses(badRequestMessage).asJson))
       }
     }
-    private def dealWithSelfAssessmentIndividual[A](confidenceLevel: ConfidenceLevel, utr: String)(
-      implicit
-      request: Request[A],
-      block: RequestData[A] => Future[Result],
-      hc: HeaderCarrier
-    ): Future[Result] = {
-      if (confidenceLevel < minimumConfidence) {
-       Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
+
+    private def dealWithSelfAssessmentIndividual[A](
+                                                     confidenceLevel: ConfidenceLevel,
+                                                     utr: String,
+                                                     request: Request[A],
+                                                     block: RequestData[A] => Future[Result]
+                                                   )(implicit hc: HeaderCarrier): Future[Result] = {
+      if (confidenceLevel < config.confidenceLevel) {
+        Unauthorized(ApiErrorResponses(unauthorisedMessage).asJson).toFuture
       } else {
-        dealWithNonAgentAffinity(utr)
+        dealWithNonAgentAffinity(utr, request, block)
       }
     }
 
-    private def dealWithNonAgentAffinity[A](utr: String)(implicit
-                                                         request: Request[A],
-                                                         block: RequestData[A] => Future[Result],
-                                                         hc: HeaderCarrier
-    ): Future[Result] = {
+    private def dealWithNonAgentAffinity[A](
+                                             utr: String,
+                                             request: Request[A],
+                                             block: RequestData[A] => Future[Result]
+                                           )(implicit hc: HeaderCarrier): Future[Result] = {
       authorised(legacySaEnrolment(utr)) {
         block(RequestData(utr, None, request))
       }.recoverWith { case _: AuthorisationException =>
@@ -115,20 +117,20 @@ class AuthenticateRequestAction @Inject()(
           }
           .recoverWith {
             case _: AuthorisationException =>
-             Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
+              Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
             case Downstream_Error =>
-             InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+              InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
             case _ =>
-             ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
+              ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
           }
       }
     }
 
-    private def authenticateAgent[A](utr: String)(implicit
-                                                  request: Request[A],
-                                                  block: RequestData[A] => Future[Result],
-                                                  hc: HeaderCarrier
-    ): Future[Result] = {
+    private def authenticateAgent[A](
+                                      utr: String,
+                                      request: Request[A],
+                                      block: RequestData[A] => Future[Result]
+                                    )(implicit hc: HeaderCarrier): Future[Result] = {
       authorised(principleAgentEnrolments) {
         authorised(delegatedLegacySaEnrolment(utr)) {
           block(RequestData(utr, None, request))
@@ -145,7 +147,7 @@ class AuthenticateRequestAction @Inject()(
                 case _: AuthorisationException =>
                   Forbidden(ApiErrorResponses(forbiddenMessage).asJson).toFuture
                 case Downstream_Error =>
-                 InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
+                  InternalServerError(ApiErrorResponses(internalErrorMEssage).asJson).toFuture
                 case _ =>
                   ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson).toFuture
               }
@@ -153,5 +155,4 @@ class AuthenticateRequestAction @Inject()(
       }
     }
   }
-
 }
