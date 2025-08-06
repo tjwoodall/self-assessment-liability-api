@@ -30,9 +30,9 @@ class SelfAssessmentHistoryController @Inject() (
 )(implicit appConfig: AppConfig, ec: ExecutionContext)
     extends BackendController(cc) {
 
-  def getYourSelfAssessmentData(utr: String): Action[AnyContent] = authenticate(utr) {
-    implicit request =>
+  def getYourSelfAssessmentData(utr: String, fromDate: Option[String]): Action[AnyContent] =
+    authenticate(utr) { implicit request =>
       Ok(Json.obj("message" -> "Success!"))
-  }
+    }
 
 }
