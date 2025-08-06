@@ -28,7 +28,7 @@ object SelfAssessmentEnrolments {
   }
 
   def delegatedMtdEnrolment(mtdId: String): Predicate = {
-      Enrolment(Mtd_Enrolment_Key)
+    Enrolment(Mtd_Enrolment_Key)
       .withIdentifier(Mtd_Identifier, mtdId)
       .withDelegatedAuthRule(Mtd_Delegated_Auth_Rule)
   }
