@@ -83,7 +83,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase {
 
       running(application) {
         val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
-        val result = controller.getYourSelfAssessmentData("1234567890")(fakeRequest)
+        val result = controller.getYourSelfAssessmentData("1234567890", None)(fakeRequest)
 
         status(result) mustBe OK
         contentAsJson(result) mustBe Json.obj("message" -> "Success!")
