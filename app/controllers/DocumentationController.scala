@@ -16,17 +16,40 @@
 
 package controllers
 
+import config.AppConfig
+import play.api.libs.json.*
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
+import scala.io.Source
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class DocumentationController @Inject() (assets: Assets, cc: ControllerComponents)
-    extends BackendController(cc) {
+class DocumentationController @Inject() (
+    assets: Assets,
+    cc: ControllerComponents,
+    appConfig: AppConfig
+) extends BackendController(cc) {
 
-  def definition(): Action[AnyContent] = {
-    assets.at("/public/api", "definition.json")
+  def definition(): Action[AnyContent] = Action {
+    val json = Json.parse(Source.fromResource("public/api/definition.json").mkString)
+    val optimus = (__ \ "api" \ "versions").json.update(
+      Reads
+        .list(
+          (__ \ "status").json
+            .update(Reads.of[JsString].map(_ => JsString(appConfig.apiPlatformStatus)))
+            andThen
+              (__ \ "endpointsEnabled").json
+                .update(
+                  Reads.of[JsBoolean].map(_ => JsBoolean(appConfig.apiPlatformEndpointsEnabled))
+                )
+        )
+        .map(JsArray(_))
+    )
+    json
+      .transform(optimus)
+      .map(Ok(_))
+      .getOrElse(throw new RuntimeException("Failed to create definition.json"))
   }
 
   def specification(version: String, file: String): Action[AnyContent] = {

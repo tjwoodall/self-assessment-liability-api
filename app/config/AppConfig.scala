@@ -32,4 +32,8 @@ class AppConfig @Inject() (config: Configuration, servicesConfig: ServicesConfig
     ConfidenceLevel
       .fromInt(config.get[Int]("confidenceLevel"))
       .getOrElse(ConfidenceLevel.L250)
+
+  lazy val apiPlatformStatus: String = servicesConfig.getString("features.api-platform.status")
+  lazy val apiPlatformEndpointsEnabled: Boolean =
+    servicesConfig.getBoolean("features.api-platform.endpoints-enabled")
 }
