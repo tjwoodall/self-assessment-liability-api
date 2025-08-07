@@ -53,7 +53,7 @@ class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
     "return nino in case of a 200 response" in {
       simmulateGet(serviceUrl("utr"), OK, validSuccessResponse)
       val result = connector.getNino("utr")
-      result.futureValue mustBe nino
+      result.futureValue mustBe Some(nino)
     }
     "return Service_Currently_Unavailable erro in case of any other response else than 404 200 and 500" in {
       simmulateGet(serviceUrl("invalidUtr"), BAD_REQUEST, "")

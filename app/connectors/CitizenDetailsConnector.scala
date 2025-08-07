@@ -17,6 +17,7 @@
 package connectors
 
 import config.AppConfig
+import models.CidPerson
 import models.ServiceErrors.*
 import play.api.libs.json.{JsResultException, JsValue}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
@@ -27,19 +28,23 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
-  def getNino(utr: String)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[String] = {
+  def getNino(
+      utr: String
+  )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Option[String]] = {
     client
       .get(url"${appConfig.citizenDetailsLookup}/citizen-details/sautr/$utr")
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
-          Future.successful((response.json \ "ids" \ "nino").as[String])
+          response.json
+            .validate[CidPerson]
+            .fold(
+              errors => Future.failed(Downstream_Error),
+              cid => Future.successful(cid.ids.nino)
+            )
         case response if response.status == 500 => Future.failed(Downstream_Error)
         case response if response.status == 404 => Future.failed(Downstream_Error)
         case _                                  => Future.failed(Service_Currently_Unavailable)
-      }
-      .recoverWith { case _: JsResultException =>
-        Future.failed(Downstream_Error)
       }
   }
 }

@@ -49,7 +49,7 @@ class SelfAssessmentServiceSpec
   "SelfAssessmentService" should {
     "return mtdId when both connectors return successful responses" in {
       when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
-        .thenReturn(Future.successful(testNino))
+        .thenReturn(Future.successful(Some(testNino)))
 
       when(mockMtdConnector.getMtdId(meq(testNino))(any(), any()))
         .thenReturn(Future.successful(MtdId(testMtdId)))
@@ -57,6 +57,15 @@ class SelfAssessmentServiceSpec
       val result = service.getMtdIdFromUtr(testUtr)
 
       result.futureValue mustBe testMtdId
+    }
+
+    "fail with Downstream_Error when CitizenDetailsConnector returns no NINO" in {
+      when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
+        .thenReturn(Future.successful(None))
+
+      val result = service.getMtdIdFromUtr(testUtr)
+
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "fail with Downstream_Error when CitizenDetailsConnector fails" in {
@@ -70,7 +79,7 @@ class SelfAssessmentServiceSpec
 
     "fail with Downstream_Error when MtdIdentifierLookupConnector fails" in {
       when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
-        .thenReturn(Future.successful(testNino))
+        .thenReturn(Future.successful(Some(testNino)))
 
       when(mockMtdConnector.getMtdId(meq(testNino))(any(), any()))
         .thenReturn(Future.failed(Downstream_Error))
@@ -84,7 +93,7 @@ class SelfAssessmentServiceSpec
       val anotherNino = "XY987654Z"
 
       when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
-        .thenReturn(Future.successful(anotherNino))
+        .thenReturn(Future.successful(Some(anotherNino)))
 
       when(mockMtdConnector.getMtdId(meq(anotherNino))(any(), any()))
         .thenReturn(Future.successful(MtdId(testMtdId)))

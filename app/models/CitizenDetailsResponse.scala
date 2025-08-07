@@ -26,6 +26,10 @@ case class CidName(firstName: Option[String], lastName: Option[String])
 case class TaxIds(nino: Option[String])
 
 object CidPerson {
+  implicit val format: OFormat[CidPerson] = Json.format[CidPerson]
+}
+
+object CidName {
   implicit val format: OFormat[CidName] = Json.format[CidName]
 }
 
@@ -35,8 +39,4 @@ object CidNames {
 
 object TaxIds {
   implicit val format: OFormat[TaxIds] = Json.format[TaxIds]
-}
-
-object CidName {
-  implicit val format: OFormat[CidName] = Json.format[CidName]
 }
