@@ -70,7 +70,10 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase {
   }
   val bodyParser: PlayBodyParsers = app.injector.instanceOf[PlayBodyParsers]
 
-  val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, s"/sa/1234567890")
+  val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(
+    GET,
+    routes.SelfAssessmentHistoryController.getYourSelfAssessmentData("1234567890", None).url
+  )
 
   "SelfAssessmentHistoryController" should {
     "return OK with success message" in {

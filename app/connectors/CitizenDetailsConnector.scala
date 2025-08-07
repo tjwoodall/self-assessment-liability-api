@@ -19,7 +19,6 @@ package connectors
 import config.AppConfig
 import models.CidPerson
 import models.ServiceErrors.*
-import play.api.libs.json.{JsResultException, JsValue}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
