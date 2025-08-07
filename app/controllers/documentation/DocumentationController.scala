@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-package controllers
+package controllers.documentation
 
 import config.AppConfig
+import controllers.Assets
 import play.api.libs.json.*
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
-import scala.io.Source
 import javax.inject.{Inject, Singleton}
+import scala.io.Source
 
 @Singleton
 class DocumentationController @Inject() (
