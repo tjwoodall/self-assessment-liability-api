@@ -17,33 +17,26 @@
 package controllers
 
 import config.AppConfig
-import models.ApiErrorResponses
-import models.ServiceErrors.*
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
-import play.api.mvc.Results.*
+import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import services.SelfAssessmentService
-import uk.gov.hmrc.auth.core.AuthConnector
-import utils.constants.ErrorMessageConstants.*
-import utils.FutureConverter.FutureOps
+import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.Inject
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class SelfAssessmentHistoryController @Inject() (
-    override val authConnector: AuthConnector,
-    val service: SelfAssessmentService,
-    cc: ControllerComponents
+    authenticate: AuthenticateRequestAction,
+    cc: ControllerComponents,
+    service: SelfAssessmentService
 )(implicit appConfig: AppConfig, ec: ExecutionContext)
-    extends AuthenticateRequestController(cc, service, authConnector) {
+    extends BackendController(cc) {
 
   def getYourSelfAssessmentData(utr: String, fromDate: Option[String]): Action[AnyContent] =
-    authorisedAction(utr) { implicit request =>
-      service
-        .getHipData(utr, fromDate.getOrElse("2025-04-06"))
-        .flatMap { hipResponse =>
-          Future.successful(Ok(Json.toJson(hipResponse)))
-        }
+    authenticate(utr) { implicit request =>
+     for{
+       selfAssessmentData <-  service.viewAccountService(utr, fromDate)
+     }
     }
-  
+
 }

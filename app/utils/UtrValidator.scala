@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package utils.constants
+package utils
 
-object EnrolmentConstants {
-  val IR_SA_Enrolment_Key = "IR-SA"
-  val IR_SA_Identifier = "UTR"
-  val IR_SA_Delegated_Auth_Rule = "sa-auth"
-  val Mtd_Enrolment_Key = "HMRC-MTD-IT"
-  val Mtd_Identifier = "MTDITID"
-  val Mtd_Delegated_Auth_Rule = "mtd-it-auth"
-  val ASA_Enrolment_Key = "HMRC-AS-AGENT"
-  val IR_SA_AGENT_Key = "IR-SA-AGENT"
+import scala.util.matching.Regex
 
+object UtrValidator {
+  def isValidUtr(utr: String): Boolean = {
+    val utrPattern: Regex = "^[A-Za-z0-9]{1,10}$".r
+    utrPattern.findFirstMatchIn(utr) match {
+      case Some(_) => true
+      case None    => false
+    }
+  }
 }

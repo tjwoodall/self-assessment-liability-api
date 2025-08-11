@@ -15,88 +15,92 @@
  */
 
 package services
-
-import connectors.{CitizenDetailsConnector, HipConnector, MtdIdentifierLookupConnector}
-import models.{HipResponse, MtdId}
-import models.ServiceErrors.*
-import org.mockito.ArgumentMatchers
-import org.mockito.ArgumentMatchers.any
+import connectors.{CitizenDetailsConnector, MtdIdentifierLookupConnector}
+import models.MtdId
+import models.ServiceErrors.Downstream_Error
+import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.when
-import org.scalatestplus.mockito.MockitoSugar.mock
-import play.api.Application
-import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.test.Helpers.*
-import shared.{HttpWireMock, SpecBase}
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.matchers.must.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.mockito.MockitoSugar
+import uk.gov.hmrc.http.HeaderCarrier
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class SelfAssessmentServiceSpec extends SpecBase with HttpWireMock {
-  override lazy val app: Application = new GuiceApplicationBuilder().build()
+class SelfAssessmentServiceSpec
+    extends AnyWordSpec
+    with Matchers
+    with MockitoSugar
+    with ScalaFutures {
 
-  private val cidConnector: CitizenDetailsConnector = mock[CitizenDetailsConnector]
-  private val mtdConnector: MtdIdentifierLookupConnector = mock[MtdIdentifierLookupConnector]
-  private val hipConnector: HipConnector = mock[HipConnector]
-  private val selfAssessmentService: SelfAssessmentService = new SelfAssessmentService(
-    cidConnector,
-    mtdConnector,
-    hipConnector
-  )(
-    ec
-  )
-  private val utr: String = "1234567890"
-  private val date: String = "2025-04-06"
-  private val nino: String = "AA055075C"
-  private val mtdId: MtdId = MtdId("MtdItId")
+  implicit val ec: ExecutionContext = ExecutionContext.global
+  implicit val hc: HeaderCarrier = HeaderCarrier()
 
-  "SelfAssessmentServiceSpec" when {
-    "getting MTDID from UTR" should {
-      "return MTDID as a string when successful" in {
-        when(cidConnector.getNino(any())(any(), any()))
-          .thenReturn(Future.successful(nino))
-        when(mtdConnector.getMtdId(ArgumentMatchers.eq(nino))(any(), any()))
-          .thenReturn(Future.successful(mtdId))
+  val mockCitizenDetailsConnector: CitizenDetailsConnector = mock[CitizenDetailsConnector]
+  val mockMtdConnector: MtdIdentifierLookupConnector = mock[MtdIdentifierLookupConnector]
 
-        running(app) {
-          selfAssessmentService
-            .getMtdIdFromUtr(utr)
-            .onComplete(success => success.get mustBe mtdId.mtdbsa)
-        }
-      }
+  val service = new SelfAssessmentService(mockCitizenDetailsConnector, mockMtdConnector)
 
-      "return an error when the request fails" in {
-        when(cidConnector.getNino(any())(any(), any()))
-          .thenReturn(Future.failed(Throwable()))
+  val testUtr = "1234567890"
+  val testNino = "AB123456C"
+  val testMtdId = "XAIT0000123456"
 
-        running(app) {
-          selfAssessmentService
-            .getMtdIdFromUtr(utr)
-            .onComplete(error => error mustBe Throwable())
-        }
-      }
+  "SelfAssessmentService" should {
+    "return mtdId when both connectors return successful responses" in {
+      when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
+        .thenReturn(Future.successful(Some(testNino)))
+
+      when(mockMtdConnector.getMtdId(meq(testNino))(any(), any()))
+        .thenReturn(Future.successful(MtdId(testMtdId)))
+
+      val result = service.getMtdIdFromUtr(testUtr)
+
+      result.futureValue mustBe testMtdId
     }
 
-    "getting HIP data" should {
-      "return details as a HipResponse object when successful" in {
-        when(hipConnector.getSelfAssessmentData(any(), any(), any())(any(), any()))
-          .thenReturn(Future.successful(hipResponse))
+    "fail with Downstream_Error when CitizenDetailsConnector returns no NINO" in {
+      when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
+        .thenReturn(Future.successful(None))
 
-        running(app) {
-          selfAssessmentService
-            .getHipData(utr, date)
-            .onComplete(success => success.get mustBe hipResponse)
-        }
-      }
+      val result = service.getMtdIdFromUtr(testUtr)
 
-      "return an error when the request fails" in {
-        when(hipConnector.getSelfAssessmentData(any(), any(), any())(any(), any()))
-          .thenReturn(Future.failed(HIP_Service_Unavailable))
+      result.failed.futureValue mustBe Downstream_Error
+    }
 
-        running(app) {
-          selfAssessmentService
-            .getHipData(utr, date)
-            .onComplete(error => error.get mustBe HIP_Service_Unavailable)
-        }
-      }
+    "fail with Downstream_Error when CitizenDetailsConnector fails" in {
+      when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
+        .thenReturn(Future.failed(Downstream_Error))
+
+      val result = service.getMtdIdFromUtr(testUtr)
+
+      result.failed.futureValue mustBe Downstream_Error
+    }
+
+    "fail with Downstream_Error when MtdIdentifierLookupConnector fails" in {
+      when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
+        .thenReturn(Future.successful(Some(testNino)))
+
+      when(mockMtdConnector.getMtdId(meq(testNino))(any(), any()))
+        .thenReturn(Future.failed(Downstream_Error))
+
+      val result = service.getMtdIdFromUtr(testUtr)
+
+      result.failed.futureValue mustBe Downstream_Error
+    }
+
+    "correctly pass the NINO from the first connector to the second connector" in {
+      val anotherNino = "XY987654Z"
+
+      when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
+        .thenReturn(Future.successful(Some(anotherNino)))
+
+      when(mockMtdConnector.getMtdId(meq(anotherNino))(any(), any()))
+        .thenReturn(Future.successful(MtdId(testMtdId)))
+
+      val result = service.getMtdIdFromUtr(testUtr)
+
+      result.futureValue mustBe testMtdId
     }
   }
 }

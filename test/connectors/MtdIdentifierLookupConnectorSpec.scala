@@ -17,7 +17,7 @@
 package connectors
 
 import models.MtdId
-import models.ServiceErrors.{Downstream_Error, Invalid_NINO}
+import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
@@ -38,23 +38,31 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
 
   "getMtdId" should {
     "return mtd ID associated with the nino if 200 response is received" in {
-      simulateGet(serviceUrl("nino"), OK, successResponse)
+      simmulateGet(serviceUrl("nino"), OK, successResponse)
       val result = connector.getMtdId("nino")
       result.futureValue mustBe mtdId
     }
-
-    "return Invalid_NINO error in case of a 400 response" in {
-      simulateGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
+    "return ServiceDown error in case of a 500 response" in {
+      simmulateGet(serviceUrl("invalidNino"), INTERNAL_SERVER_ERROR, "")
       val result = connector.getMtdId("invalidNino")
-      result.failed.futureValue mustBe Invalid_NINO
-
-    }
-
-    "return Downstream_Error in case of a any other response" in {
-      simulateGet(serviceUrl("ninoCausingInternalError"), INTERNAL_SERVER_ERROR, "")
-      val result = connector.getMtdId("ninoCausinginternalError")
       result.failed.futureValue mustBe Downstream_Error
 
+    }
+    "return Service_Currently_Unavailable error in case of any other response" in {
+      simmulateGet(serviceUrl("invalidNino"), UNAUTHORIZED, "")
+      val result = connector.getMtdId("invalidNino")
+      result.failed.futureValue mustBe Service_Currently_Unavailable
+    }
+    "return Downstream_Error error in case of bad request response" in {
+      simmulateGet(serviceUrl("invalidNino"), BAD_REQUEST, "")
+      val result = connector.getMtdId("invalidNino")
+      result.failed.futureValue mustBe Downstream_Error
+    }
+    "return Downstream_Error when JSON validation fails" in {
+      val invalidJsonResponse = Json.obj("invalidField" -> "invalidValue").toString()
+      simmulateGet(serviceUrl("nino"), OK, invalidJsonResponse)
+      val result = connector.getMtdId("nino")
+      result.failed.futureValue mustBe Downstream_Error
     }
   }
 

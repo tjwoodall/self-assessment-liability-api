@@ -7,19 +7,15 @@ servers:
     description: Sandbox
   - url: https://api.service.hmrc.gov.uk
     description: Production
-security:
-  - oAuth2:
-      - User Restricted
-      - read:self-assessment
 paths:
-  /accounts/breakdown/self-assessment/{utr}:
+  /individuals/self-assessment/breakdown/{utr}:
     get:
       tags:
         - Self Assessment Account Details
       summary: Account Details
       description: |
         <b>Examples</b><br>
-        /accounts/breakdown/self-assessment/1234567890/?fromDate=2024-08-04
+        /individuals/self-assessment/breakdown/1234567890?fromDate=2024-08-04
       parameters:
         - in: header
           name: Authorization
@@ -102,10 +98,12 @@ paths:
               examples:
                 error503ResponseBodyExample:
                   $ref: '#/components/examples/error503ResponseBodyExample'
-
+      security:
+        - userRestricted:
+          - read:self-assessment
 components:
   securitySchemes:
-    oAuth2:
+    userRestricted:
       type: oauth2
       description: HMRC supports OAuth 2.0 for authenticating user restricted API requests using an OAuth 2.0 Bearer Token in the AUTHORIZATION header.
         Please see the [developer hub](https://developer.service.hmrc.gov.uk/api-documentation/docs/authorisation/user-restricted-endpoints) for more details.
@@ -115,7 +113,7 @@ components:
           tokenUrl: https://api.service.hmrc.gov.uk/oauth/token
           refreshUrl: https://api.service.hmrc.gov.uk/oauth/refresh
           scopes:
-            read:self-assessment: Grant read self-assessment data
+            read:self-assessment: Read self-assessment data
   headers:
     Authorization:
       description: An OAuth 2.0 Bearer Token with the *read:self-assessment* scope.
