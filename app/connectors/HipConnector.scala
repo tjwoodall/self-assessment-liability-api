@@ -20,7 +20,7 @@ import com.fasterxml.jackson.core.JsonParseException
 import config.AppConfig
 import models.HipResponse
 import models.ServiceErrors.*
-import play.api.libs.json.JsSuccess
+import play.api.libs.json.{JsError, JsSuccess}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
@@ -54,7 +54,7 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
         case response if response.status == 200 =>
           response.json.validate[HipResponse] match {
             case JsSuccess(hipResponse, _) => Future.successful(hipResponse)
-            case 
+            case JsError(error) => Future.failed(Json_Validation_Error)
           }
         case response if response.status == 404 =>
           Future.failed(No_Data_Found)

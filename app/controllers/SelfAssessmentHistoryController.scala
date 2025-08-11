@@ -44,26 +44,6 @@ class SelfAssessmentHistoryController @Inject() (
         .flatMap { hipResponse =>
           Future.successful(Ok(Json.toJson(hipResponse)))
         }
-        .recoverWith {
-          handleFailedRequest
-        }
     }
-
-  private def handleFailedRequest: PartialFunction[Throwable, Future[Result]] = {
-    case HIP_Unauthorised =>
-      constructErrorResponse(Unauthorized, unauthorisedMessage)
-    case HIP_Forbidden =>
-      constructErrorResponse(Forbidden, forbiddenMessage)
-    case No_Payments_Found_For_UTR =>
-      constructErrorResponse(BadRequest, badRequestMessage)
-    case HIP_Service_Unavailable =>
-      constructErrorResponse(ServiceUnavailable, serviceUnavailableMessage)
-    case Invalid_Correlation_Id | Invalid_UTR | HIP_Server_Error | HIP_Bad_Gateway |
-        Downstream_Error | _ =>
-      constructErrorResponse(InternalServerError, internalErrorMessage)
-  }
-
-  private def constructErrorResponse(status: Status, message: String): Future[Result] = {
-    status(ApiErrorResponses(message).asJson).toFuture
-  }
+  
 }

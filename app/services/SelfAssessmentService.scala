@@ -36,12 +36,10 @@ class SelfAssessmentService @Inject() (
     } yield mtdId.mtdbsa
   }
 
-  def getHipData(utr: String, fromDate: String)(implicit hc: HeaderCarrier): Future[HipResponse] = {
-    val toDate: String =
-      LocalDate.now.toString // TODO: DI-565 to implement logic to generate dateTo.
+  def viewAccountService(utr: String, fromDate: Option[String])(implicit hc: HeaderCarrier): Future[HipResponse] = {
 
     for {
-      hipResponse <- hipConnector.getSelfAssessmentData(utr, fromDate, toDate)
+      hipResponse <- hipConnector.getSelfAssessmentData(utr, fromDate)
     } yield hipResponse
   }
 }

@@ -22,6 +22,7 @@ sealed abstract class ServiceErrors extends Throwable {
 
 object ServiceErrors {
   case object Downstream_Error extends ServiceErrors
+  case object Json_Validation_Error extends ServiceErrors
   case object No_Data_Found extends ServiceErrors
 
 }
