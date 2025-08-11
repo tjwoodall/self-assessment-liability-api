@@ -20,11 +20,13 @@ import com.fasterxml.jackson.core.JsonParseException
 import config.AppConfig
 import models.HipResponse
 import models.ServiceErrors.*
+import play.api.libs.json.JsSuccess
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 import utils.FutureConverter.FutureOps
 
+import java.util.UUID
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -39,36 +41,25 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
       "dateTo" -> toDate
     )
 
+    val correlationId: String = UUID.randomUUID.toString
+
     client
       .get(
         url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details"
       )
       .transform(_.withQueryStringParameters(queryParameters*))
+      .setHeader("correlationId"  -> correlationId)
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
-          response.json.as[HipResponse].toFuture
-        case response if response.status == 400 =>
-          Future.failed(Invalid_Correlation_Id)
-        case response if response.status == 401 =>
-          Future.failed(HIP_Unauthorised)
-        case response if response.status == 403 =>
-          Future.failed(HIP_Forbidden)
+          response.json.validate[HipResponse] match {
+            case JsSuccess(hipResponse, _) => Future.successful(hipResponse)
+            case 
+          }
         case response if response.status == 404 =>
-          Future.failed(No_Payments_Found_For_UTR)
-        case response if response.status == 422 =>
-          Future.failed(Invalid_UTR)
-        case response if response.status == 500 =>
-          Future.failed(HIP_Server_Error)
-        case response if response.status == 502 =>
-          Future.failed(HIP_Bad_Gateway)
-        case response if response.status == 503 =>
-          Future.failed(HIP_Service_Unavailable)
+          Future.failed(No_Data_Found)
         case _ =>
           Future.failed(Downstream_Error)
-      }
-      .recoverWith { case _: JsonParseException =>
-        Future.failed(Downstream_Error)
       }
   }
 }

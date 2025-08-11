@@ -18,14 +18,16 @@ package models
 
 import play.api.libs.json.{Json, OFormat}
 
+import java.time.LocalDate
+
 case class RefundDetails(
-    issueDate: String,
+    refundDate: LocalDate,
     refundMethod: Option[String],
-    refundRequestDate: Option[String],
+    refundRequestDate: Option[LocalDate],
     refundRequestAmount: Double,
-    refundReference: Option[String],
+    refundDescription: Option[String],
     interestAddedToRefund: Option[Double],
-    refundActualAmount: Double,
+    totalRefundAmount: Double,
     refundStatus: Option[String]
 )
 

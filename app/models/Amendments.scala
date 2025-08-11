@@ -18,13 +18,15 @@ package models
 
 import play.api.libs.json.{Json, OFormat}
 
+import java.time.LocalDate
+
 case class Amendments(
-    amendmentDate: String,
+    amendmentDate: LocalDate,
     amendmentAmount: Double,
     amendmentReason: String,
-    newChargeBalance: Option[Double],
+    updatedChargeAmount: Option[Double] = None,
     paymentMethod: Option[String],
-    paymentDate: Option[String]
+    paymentDate: Option[LocalDate]
 )
 
 object Amendments {
