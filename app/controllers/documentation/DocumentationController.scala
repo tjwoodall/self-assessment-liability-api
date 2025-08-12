@@ -32,7 +32,8 @@ class DocumentationController @Inject() (
     assets: Assets,
     cc: ControllerComponents,
     appConfig: AppConfig
-) extends BackendController(cc) with Logging {
+) extends BackendController(cc)
+    with Logging {
 
   def definition(): Action[AnyContent] = Action {
     val status = appConfig.apiPlatformStatus
