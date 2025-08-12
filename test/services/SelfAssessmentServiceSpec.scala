@@ -15,38 +15,33 @@
  */
 
 package services
-import connectors.{CitizenDetailsConnector, MtdIdentifierLookupConnector}
+import connectors.{CitizenDetailsConnector, HipConnector, MtdIdentifierLookupConnector}
 import models.MtdId
 import models.ServiceErrors.Downstream_Error
 import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.when
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatestplus.mockito.MockitoSugar
-import uk.gov.hmrc.http.HeaderCarrier
+import play.api.inject.guice.GuiceApplicationBuilder
+import shared.SpecBase
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class SelfAssessmentServiceSpec
-    extends AnyWordSpec
-    with Matchers
-    with MockitoSugar
-    with ScalaFutures {
+    extends SpecBase{
 
-  implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val hc: HeaderCarrier = HeaderCarrier()
+
 
   val mockCitizenDetailsConnector: CitizenDetailsConnector = mock[CitizenDetailsConnector]
   val mockMtdConnector: MtdIdentifierLookupConnector = mock[MtdIdentifierLookupConnector]
+  val mockHipConnector: HipConnector = mock[HipConnector]
 
-  val service = new SelfAssessmentService(mockCitizenDetailsConnector, mockMtdConnector)
+  val service: SelfAssessmentService = new SelfAssessmentService(mockCitizenDetailsConnector, mockMtdConnector, mockHipConnector)
 
   val testUtr = "1234567890"
   val testNino = "AB123456C"
   val testMtdId = "XAIT0000123456"
 
-  "SelfAssessmentService" should {
+  "getMtdIdFromUtr" should {
     "return mtdId when both connectors return successful responses" in {
       when(mockCitizenDetailsConnector.getNino(meq(testUtr))(any(), any()))
         .thenReturn(Future.successful(Some(testNino)))
@@ -101,6 +96,12 @@ class SelfAssessmentServiceSpec
       val result = service.getMtdIdFromUtr(testUtr)
 
       result.futureValue mustBe testMtdId
+    }
+  }
+  "viewAccountService" should {
+
+    "enquire about the last tax year if no date has been provided and return " in {
+      
     }
   }
 }

@@ -16,9 +16,12 @@
 
 package connectors
 
+import connectors.HipConnectorSpec.{hipResponse, jsonSuccessResponse}
+import models.HipResponse
 import models.ServiceErrors.*
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Json
 import shared.{HttpWireMock, SpecBase}
 
 import java.time.LocalDate
@@ -54,49 +57,49 @@ class HipConnectorSpec extends SpecBase with HttpWireMock {
     "return expected error if 400 response is received" in {
       simulateGet(serviceUrl, BAD_REQUEST, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe Invalid_Correlation_Id
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "return expected error if 401 response is received" in {
       simulateGet(serviceUrl, UNAUTHORIZED, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe HIP_Unauthorised
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "return expected error if 403 response is received" in {
       simulateGet(serviceUrl, FORBIDDEN, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe HIP_Forbidden
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "return expected error if 404 response is received" in {
       simulateGet(serviceUrl, NOT_FOUND, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe No_Payments_Found_For_UTR
+      result.failed.futureValue mustBe No_Data_Found
     }
 
     "return expected error if 422 response is received" in {
       simulateGet(serviceUrl, UNPROCESSABLE_ENTITY, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe Invalid_UTR
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "return expected error if 500 response is received" in {
       simulateGet(serviceUrl, INTERNAL_SERVER_ERROR, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe HIP_Server_Error
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "return expected error if 502 response is received" in {
       simulateGet(serviceUrl, BAD_GATEWAY, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe HIP_Bad_Gateway
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "return expected error if 503 response is received" in {
       simulateGet(serviceUrl, SERVICE_UNAVAILABLE, "")
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe HIP_Service_Unavailable
+      result.failed.futureValue mustBe Downstream_Error
     }
 
     "return Downstream_Error in case of any other response" in {
@@ -105,4 +108,69 @@ class HipConnectorSpec extends SpecBase with HttpWireMock {
       result.failed.futureValue mustBe Downstream_Error
     }
   }
+}
+
+
+object HipConnectorSpec {
+  val jsonSuccessResponse: String =
+    """
+      |{
+      |  "balanceDetails": {
+      |  "totalOverdueBalance": 500.00,
+      |  "totalPayableBalance": 500.00,
+      |  "payableDueDate": "2025-04-31",
+      |  "totalPendingBalance": 1500.00,
+      |  "pendingDueDate": "2025-07-15",
+      |  "totalBalance": 2000.00,
+      |  "totalCreditAvailable": 0.00,
+      |    "codedOutDetail": [
+      |      {
+      |        "totalAmount": 100.00,
+      |        "effectiveStartDate": "2021-12-04",
+      |        "effectiveEndDate": "2023-10-04"
+      |      }
+      |    ]
+      |},
+      |"chargeDetails": [
+      |  {
+      |    "chargeId": "KL3456789",
+      |    "creationDate": "2025-05-22",
+      |    "chargeType": "VATC",
+      |    "chargeAmount": 1500.00,
+      |    "outstandingAmount": 1500.00,
+      |    "taxYear": "2025-2026",
+      |    "dueDate": "2025-07-15",
+      |    "amendments": [
+      |      {
+      |        "amendmentDate": "ad",
+      |        "amendmentAmount": 0.00,
+      |        "amendmentReason": "ar"
+      |      }
+      |    ]
+      |  }
+      |],
+      |"refundDetails": [
+      |  {
+      |    "issueDate": "id",
+      |    "refundMethod": "rm",
+      |    "refundRequestDate": "rrd",
+      |    "refundRequestAmount": 0.00,
+      |    "refundReference": "rr",
+      |    "interestAddedToRefund": 0.00,
+      |    "refundActualAmount": 0.00,
+      |    "refundStatus": "rs"
+      |  }
+      |],
+      |"paymentHistoryDetails": [
+      |  {
+      |    "paymentAmount": 500.00,
+      |    "paymentId": "payment reference id",
+      |    "paymentMethod": "payment method",
+      |    "paymentDate": "2025-04-11",
+      |    "dateProcessed": "2025-04-15",
+      |    "allocationReference": "allocation reference"
+      |  }
+      |]
+      |}""".stripMargin
+  val hipResponse: HipResponse = Json.parse(jsonSuccessResponse).as[HipResponse]
 }

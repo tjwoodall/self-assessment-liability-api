@@ -16,21 +16,20 @@
 
 package connectors
 
-import com.fasterxml.jackson.core.JsonParseException
 import config.AppConfig
 import models.HipResponse
 import models.ServiceErrors.*
+import play.api.Logging
 import play.api.libs.json.{JsError, JsSuccess}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
-import utils.FutureConverter.FutureOps
 
 import java.util.UUID
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
+class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extends Logging{
   def getSelfAssessmentData(
       utr: String,
       fromDate: String,
@@ -58,7 +57,7 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
           }
         case response if response.status == 404 =>
           Future.failed(No_Data_Found)
-        case _ =>
+        case response =>
           Future.failed(Downstream_Error)
       }
   }

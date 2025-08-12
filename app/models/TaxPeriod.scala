@@ -16,21 +16,6 @@
 
 package models
 
-import play.api.libs.json.{Json, OFormat}
-
 import java.time.LocalDate
 
-case class BalanceDetails(
-    totalOverdueBalance: Double,
-    totalPayableBalance: Double,
-    earliestPayableDueDate: Option[LocalDate],
-    totalPendingBalance: Double,
-    earliestPendingDueDate: Option[LocalDate],
-    totalBalance: Double,
-    totalCreditAvailable: Double,
-    codedOutDetail: Option[Set[CodedOutDetail]]
-)
-
-object BalanceDetails {
-  implicit val format: OFormat[BalanceDetails] = Json.format[BalanceDetails]
-}
+case class TaxPeriod(dateFrom:LocalDate, dateTo: LocalDate)
