@@ -18,6 +18,8 @@ package controllers.documentation
 
 import config.AppConfig
 import controllers.Assets
+import org.apache.pekko.event.Logging
+import play.api.Logging
 import play.api.libs.json.*
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
@@ -30,19 +32,23 @@ class DocumentationController @Inject() (
     assets: Assets,
     cc: ControllerComponents,
     appConfig: AppConfig
-) extends BackendController(cc) {
+) extends BackendController(cc)
+    with Logging {
 
   def definition(): Action[AnyContent] = Action {
+    val status = appConfig.apiPlatformStatus
+    val enabled = appConfig.apiPlatformEndpointsEnabled
     val json = Json.parse(Source.fromResource("public/api/definition.json").mkString)
+    logger.info(s"API enablment is set to $enabled with $status status")
     val optimus = (__ \ "api" \ "versions").json.update(
       Reads
         .list(
           (__ \ "status").json
-            .update(Reads.of[JsString].map(_ => JsString(appConfig.apiPlatformStatus)))
+            .update(Reads.of[JsString].map(_ => JsString(status)))
             andThen
               (__ \ "endpointsEnabled").json
                 .update(
-                  Reads.of[JsBoolean].map(_ => JsBoolean(appConfig.apiPlatformEndpointsEnabled))
+                  Reads.of[JsBoolean].map(_ => JsBoolean(enabled))
                 )
         )
         .map(JsArray(_))
