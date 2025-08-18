@@ -100,7 +100,7 @@ class SelfAssessmentServiceSpec
   }
   "viewAccountService" should {
 
-    "enquire about the last tax year if no date has been provided and return " in {
+    "call HIP with " in {
       
     }
   }
