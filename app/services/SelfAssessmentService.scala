@@ -37,29 +37,20 @@ class SelfAssessmentService @Inject() (
     } yield mtdId.mtdbsa
   }
 
-  def viewAccountService(utr: String, fromDate: Option[String])(implicit hc: HeaderCarrier): Future[HipResponse] = {
+  def viewAccountService(utr: String, fromDate: Option[String])(implicit
+      hc: HeaderCarrier
+  ): Future[HipResponse] = {
     val now: LocalDate = LocalDate.now()
 
-    val taxYears = fromDate.map{date=>TaxPeriod(LocalDate.parse(date), now)}.getOrElse(TaxPeriod(now.minusYears(2), now))
+    val taxYears = fromDate
+      .map { date => TaxPeriod(LocalDate.parse(date), now) }
+      .getOrElse(TaxPeriod(now.minusYears(2), now))
     for {
-      hipResponse <- hipConnector.getSelfAssessmentData(utr, taxYears.dateFrom.toString, taxYears.dateTo.toString)
+      hipResponse <- hipConnector.getSelfAssessmentData(
+        utr,
+        taxYears.dateFrom.toString,
+        taxYears.dateTo.toString
+      )
     } yield hipResponse
   }
-//  /*
-//  6 +1 and not after today and 2 previous taxYears if today == beginning of taxYear
-//  
-//   */
-//  private def getTaxYears(fromDate: Option[String]): Future[TaxPeriod] = {
-//    val today = LocalDate.now()
-//      val startingDate = fromDate.map { date => taxYearStart(LocalDate.parse(date)) }.getOrElse(taxYearStart(today))
-//      Future.successful(TaxPeriod(dateFrom = startingDate, dateTo = today))
-//  }
-//  
-//  /*
-//  1) 03-4-2015 -> 
-//   */
-//  
-//  private def taxYearStart(date: LocalDate): LocalDate ={
-//    date.withMonth(4).withDayOfMonth(6)
-//  }
 }

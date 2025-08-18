@@ -16,13 +16,13 @@
 
 package connectors
 
-import connectors.HipConnectorSpec.{hipResponse, jsonSuccessResponse}
 import models.HipResponse
 import models.ServiceErrors.*
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks.forAll
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
-import shared.{HttpWireMock, SpecBase}
+import shared.{HipResponseGenerator, HttpWireMock, SpecBase}
 
 import java.time.LocalDate
 
@@ -43,15 +43,17 @@ class HipConnectorSpec extends SpecBase with HttpWireMock {
 
   "getSelfAssessmentData" should {
     "return JSON associated with the utr and date if 200 response is received" in {
-      simulateGet(serviceUrl, OK, jsonSuccessResponse)
-      val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.futureValue mustBe hipResponse
+      forAll(HipResponseGenerator.hipResponseGen) { hipResponse =>
+        simulateGet(serviceUrl, OK, Json.toJson(hipResponse).toString)
+        val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
+        result.futureValue mustBe hipResponse
+      }
     }
 
     "return expected error if returned JSON is malformed" in {
-      simulateGet(serviceUrl, OK, """{malformedJson}""")
+      simulateGet(serviceUrl, OK, Json.obj("badField" -> "existing").toString)
       val result = connector.getSelfAssessmentData(utr, fromDate, toDate)
-      result.failed.futureValue mustBe Downstream_Error
+      result.failed.futureValue mustBe Json_Validation_Error
     }
 
     "return expected error if 400 response is received" in {
@@ -108,69 +110,4 @@ class HipConnectorSpec extends SpecBase with HttpWireMock {
       result.failed.futureValue mustBe Downstream_Error
     }
   }
-}
-
-
-object HipConnectorSpec {
-  val jsonSuccessResponse: String =
-    """
-      |{
-      |  "balanceDetails": {
-      |  "totalOverdueBalance": 500.00,
-      |  "totalPayableBalance": 500.00,
-      |  "payableDueDate": "2025-04-31",
-      |  "totalPendingBalance": 1500.00,
-      |  "pendingDueDate": "2025-07-15",
-      |  "totalBalance": 2000.00,
-      |  "totalCreditAvailable": 0.00,
-      |    "codedOutDetail": [
-      |      {
-      |        "totalAmount": 100.00,
-      |        "effectiveStartDate": "2021-12-04",
-      |        "effectiveEndDate": "2023-10-04"
-      |      }
-      |    ]
-      |},
-      |"chargeDetails": [
-      |  {
-      |    "chargeId": "KL3456789",
-      |    "creationDate": "2025-05-22",
-      |    "chargeType": "VATC",
-      |    "chargeAmount": 1500.00,
-      |    "outstandingAmount": 1500.00,
-      |    "taxYear": "2025-2026",
-      |    "dueDate": "2025-07-15",
-      |    "amendments": [
-      |      {
-      |        "amendmentDate": "ad",
-      |        "amendmentAmount": 0.00,
-      |        "amendmentReason": "ar"
-      |      }
-      |    ]
-      |  }
-      |],
-      |"refundDetails": [
-      |  {
-      |    "issueDate": "id",
-      |    "refundMethod": "rm",
-      |    "refundRequestDate": "rrd",
-      |    "refundRequestAmount": 0.00,
-      |    "refundReference": "rr",
-      |    "interestAddedToRefund": 0.00,
-      |    "refundActualAmount": 0.00,
-      |    "refundStatus": "rs"
-      |  }
-      |],
-      |"paymentHistoryDetails": [
-      |  {
-      |    "paymentAmount": 500.00,
-      |    "paymentId": "payment reference id",
-      |    "paymentMethod": "payment method",
-      |    "paymentDate": "2025-04-11",
-      |    "dateProcessed": "2025-04-15",
-      |    "allocationReference": "allocation reference"
-      |  }
-      |]
-      |}""".stripMargin
-  val hipResponse: HipResponse = Json.parse(jsonSuccessResponse).as[HipResponse]
 }

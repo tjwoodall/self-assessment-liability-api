@@ -29,7 +29,7 @@ import java.util.UUID
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extends Logging{
+class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extends Logging {
   def getSelfAssessmentData(
       utr: String,
       fromDate: String,
@@ -47,13 +47,13 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extend
         url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details"
       )
       .transform(_.withQueryStringParameters(queryParameters*))
-      .setHeader("correlationId"  -> correlationId)
+      .setHeader("correlationId" -> correlationId)
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
           response.json.validate[HipResponse] match {
             case JsSuccess(hipResponse, _) => Future.successful(hipResponse)
-            case JsError(error) => Future.failed(Json_Validation_Error)
+            case JsError(error)            => Future.failed(Json_Validation_Error)
           }
         case response if response.status == 404 =>
           Future.failed(No_Data_Found)

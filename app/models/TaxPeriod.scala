@@ -18,4 +18,4 @@ package models
 
 import java.time.LocalDate
 
-case class TaxPeriod(dateFrom:LocalDate, dateTo: LocalDate)
+case class TaxPeriod(dateFrom: LocalDate, dateTo: LocalDate)

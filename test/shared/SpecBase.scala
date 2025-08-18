@@ -16,7 +16,6 @@
 
 package shared
 
-import models.HipResponse
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -24,7 +23,6 @@ import org.scalatest.{BeforeAndAfterEach, OptionValues}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.http.*
-import play.api.libs.json.Json
 import play.api.mvc.*
 import play.api.test.*
 import uk.gov.hmrc.http.HeaderCarrier
@@ -47,6 +45,5 @@ trait SpecBase
 
   implicit lazy val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
   implicit lazy val hc: HeaderCarrier = HeaderCarrier()
-
 
 }
