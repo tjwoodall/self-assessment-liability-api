@@ -68,7 +68,7 @@ object HipResponseGenerator {
     interestEndDate = endDate
   )
 
-  val amendmentsGen: Gen[Amendments] = for {
+  val amendmentsGen: Gen[Amendment] = for {
     amendmentDate <- localDateGen
     amendmentAmount <- Gen.choose(-10000.0, 10000.0)
     amendmentReason <- Gen.oneOf(
@@ -80,7 +80,7 @@ object HipResponseGenerator {
     updatedChargeAmount <- Gen.option(Gen.choose(0.0, 50000.0))
     paymentMethod <- Gen.option(Gen.oneOf("Bank Transfer", "Credit Card", "Cheque", "Direct Debit"))
     paymentDate <- Gen.option(localDateGen)
-  } yield Amendments(
+  } yield Amendment(
     amendmentDate = amendmentDate,
     amendmentAmount = amendmentAmount,
     amendmentReason = amendmentReason,
@@ -101,7 +101,7 @@ object HipResponseGenerator {
     accruingInterest <- Gen.option(Gen.choose(0.0, 1000.0))
     accruingInterestPeriod <- Gen.option(accruingInterestPeriodGen)
     accruingInterestRate <- Gen.option(Gen.choose(0.0, 15.0))
-    amendments <- Gen.option(Gen.containerOf[Set, Amendments](amendmentsGen))
+    amendments <- Gen.option(Gen.containerOf[Set, Amendment](amendmentsGen))
   } yield ChargeDetails(
     chargeId = chargeId,
     creationDate = creationDate,
