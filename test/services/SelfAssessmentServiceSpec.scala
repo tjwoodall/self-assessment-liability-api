@@ -109,8 +109,8 @@ class SelfAssessmentServiceSpec extends SpecBase {
         when(
           mockHipConnector.getSelfAssessmentData(
             meq("utr"),
-            meq(today.minusYears(2).toString),
-            meq(today.toString)
+            meq(today.minusYears(2)),
+            meq(today)
           )(any(), any())
         ).thenReturn(Future.successful(hipResponse))
         val result = service.viewAccountService("utr", None)
@@ -123,8 +123,8 @@ class SelfAssessmentServiceSpec extends SpecBase {
         when(
           mockHipConnector.getSelfAssessmentData(
             meq("utr"),
-            meq(today.minusYears(4).toString),
-            meq(today.toString)
+            meq(today.minusYears(4)),
+            meq(today)
           )(any(), any())
         ).thenReturn(Future.successful(hipResponse))
         val result = service.viewAccountService("utr", Some(today.minusYears(4).toString))
@@ -139,8 +139,8 @@ class SelfAssessmentServiceSpec extends SpecBase {
       when(
         mockHipConnector.getSelfAssessmentData(
           meq("utr"),
-          meq(today.minusYears(2).toString),
-          meq(today.toString)
+          meq(today.minusYears(2)),
+          meq(today)
         )(any(), any())
       ).thenReturn(Future.failed(randomError))
       val result = service.viewAccountService("utr", None)

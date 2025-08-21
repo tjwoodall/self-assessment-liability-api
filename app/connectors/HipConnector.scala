@@ -25,6 +25,7 @@ import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,12 +33,12 @@ import scala.concurrent.{ExecutionContext, Future}
 class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extends Logging {
   def getSelfAssessmentData(
       utr: String,
-      fromDate: String,
-      toDate: String
+      fromDate: LocalDate,
+      toDate: LocalDate
   )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HipResponse] = {
     val queryParameters = Seq(
-      "dateFrom" -> fromDate,
-      "dateTo" -> toDate
+      "dateFrom" -> fromDate.toString,
+      "dateTo" -> toDate.toString
     )
 
     val correlationId: String = UUID.randomUUID.toString

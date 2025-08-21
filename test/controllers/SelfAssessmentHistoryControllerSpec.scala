@@ -81,7 +81,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase {
     "return OK with success message" in {
       forAll(HipResponseGenerator.hipResponseGen) { hipResponse =>
 
-        when(mockService.viewAccountService(meq("1234567890"), any())(any()))
+        when(mockService.viewAccountService(meq("1234567890"), meq(Some("2024-05-01")))(any()))
           .thenReturn(Future.successful(hipResponse))
 
         val application = new GuiceApplicationBuilder()
@@ -93,7 +93,8 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase {
 
         running(application) {
           val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
-          val result = controller.getYourSelfAssessmentData("1234567890", None)(fakeRequest)
+          val result =
+            controller.getYourSelfAssessmentData("1234567890", Some("2024-05-01"))(fakeRequest)
 
           status(result) mustBe OK
           contentAsJson(result) mustBe Json.toJson(hipResponse)

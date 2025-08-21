@@ -18,7 +18,7 @@ package services
 
 import connectors.{CitizenDetailsConnector, HipConnector, MtdIdentifierLookupConnector}
 import models.ServiceErrors.Downstream_Error
-import models.{HipResponse, TaxPeriod}
+import models.HipResponse
 import uk.gov.hmrc.http.HeaderCarrier
 
 import java.time.LocalDate
@@ -43,13 +43,13 @@ class SelfAssessmentService @Inject() (
     val now: LocalDate = LocalDate.now()
 
     val taxYears = fromDate
-      .map { date => TaxPeriod(LocalDate.parse(date), now) }
-      .getOrElse(TaxPeriod(now.minusYears(2), now))
+      .map { date => (LocalDate.parse(date), now) }
+      .getOrElse((now.minusYears(2), now))
     for {
       hipResponse <- hipConnector.getSelfAssessmentData(
         utr,
-        taxYears.dateFrom.toString,
-        taxYears.dateTo.toString
+        taxYears._1,
+        taxYears._2
       )
     } yield hipResponse
   }

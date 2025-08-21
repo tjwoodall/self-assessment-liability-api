@@ -18,18 +18,18 @@ package shared
 
 import models.*
 import org.scalacheck.Gen
-import java.time.LocalDate
+
+import java.time.{LocalDate, ZoneId}
 
 object HipResponseGenerator {
 
   val localDateGen: Gen[LocalDate] = for {
     year <- Gen.choose(LocalDate.now().minusYears(7).getYear, LocalDate.now().getYear)
-    month <- Gen.choose(1, 12)
-    day <- Gen.choose(1, 28)
-  } yield LocalDate.of(year, month, day)
+    date <- Gen.calendar.map(c => LocalDate.ofInstant(c.toInstant, ZoneId.of("UTC")).withYear(year))
+  } yield date
 
   val codedOutDetailGen: Gen[CodedOutDetail] = for {
-    totalAmount <- Gen.choose(0.0, 10000.0)
+    totalAmount <- Gen.choose(0.0, 10000.0).map(BigDecimal(_))
     startDate <- localDateGen
     daysToAdd <- Gen.choose(1, 365)
     endDate = startDate.plusDays(daysToAdd)
@@ -40,14 +40,14 @@ object HipResponseGenerator {
   )
 
   val balanceDetailsGen: Gen[BalanceDetails] = for {
-    totalOverdueBalance <- Gen.choose(0.0, 50000.0)
-    totalPayableBalance <- Gen.choose(0.0, 100000.0)
+    totalOverdueBalance <- Gen.choose(0.0, 50000.0).map(BigDecimal(_))
+    totalPayableBalance <- Gen.choose(0.0, 100000.0).map(BigDecimal(_))
     earliestPayableDueDate <- Gen.option(localDateGen)
-    totalPendingBalance <- Gen.choose(0.0, 25000.0)
+    totalPendingBalance <- Gen.choose(0.0, 25000.0).map(BigDecimal(_))
     earliestPendingDueDate <- Gen.option(localDateGen)
-    totalBalance <- Gen.choose(0.0, 150000.0)
-    totalCreditAvailable <- Gen.choose(0.0, 20000.0)
-    codedOutDetails <- Gen.option(Gen.containerOf[Set, CodedOutDetail](codedOutDetailGen))
+    totalBalance <- Gen.choose(0.0, 150000.0).map(BigDecimal(_))
+    totalCreditAvailable <- Gen.choose(0.0, 20000.0).map(BigDecimal(_))
+    codedOutDetails <- Gen.containerOf[List, CodedOutDetail](codedOutDetailGen)
   } yield BalanceDetails(
     totalOverdueBalance = totalOverdueBalance,
     totalPayableBalance = totalPayableBalance,
@@ -70,14 +70,14 @@ object HipResponseGenerator {
 
   val amendmentsGen: Gen[Amendment] = for {
     amendmentDate <- localDateGen
-    amendmentAmount <- Gen.choose(-10000.0, 10000.0)
+    amendmentAmount <- Gen.choose(-10000.0, 10000.0).map(BigDecimal(_))
     amendmentReason <- Gen.oneOf(
       "Correction",
       "Late Filing Penalty",
       "Interest Adjustment",
       "Manual Override"
     )
-    updatedChargeAmount <- Gen.option(Gen.choose(0.0, 50000.0))
+    updatedChargeAmount <- Gen.option(Gen.choose(0.0, 50000.0)).map(_.map(BigDecimal(_)))
     paymentMethod <- Gen.option(Gen.oneOf("Bank Transfer", "Credit Card", "Cheque", "Direct Debit"))
     paymentDate <- Gen.option(localDateGen)
   } yield Amendment(
@@ -93,15 +93,15 @@ object HipResponseGenerator {
     chargeId <- Gen.alphaNumStr.suchThat(_.nonEmpty)
     creationDate <- localDateGen
     chargeType <- Gen.oneOf("Income Tax", "VAT", "Corporation Tax", "PAYE", "National Insurance")
-    chargeAmount <- Gen.choose(1.0, 100000.0)
-    outstandingAmount <- Gen.choose(0.0, 50000.0)
+    chargeAmount <- Gen.choose(1.0, 100000.0).map(BigDecimal(_))
+    outstandingAmount <- Gen.choose(0.0, 50000.0).map(BigDecimal(_))
     taxYear <- Gen.choose(2020, 2025).map(year => s"$year-${year + 1}")
     dueDate <- localDateGen
-    outstandingInterestDue <- Gen.option(Gen.choose(0.0, 5000.0))
-    accruingInterest <- Gen.option(Gen.choose(0.0, 1000.0))
+    outstandingInterestDue <- Gen.option(Gen.choose(0.0, 5000.0)).map(_.map(BigDecimal(_)))
+    accruingInterest <- Gen.option(Gen.choose(0.0, 1000.0)).map(_.map(BigDecimal(_)))
     accruingInterestPeriod <- Gen.option(accruingInterestPeriodGen)
-    accruingInterestRate <- Gen.option(Gen.choose(0.0, 15.0))
-    amendments <- Gen.option(Gen.containerOf[Set, Amendment](amendmentsGen))
+    accruingInterestRate <- Gen.option(Gen.choose(0.0, 15.0)).map(_.map(BigDecimal(_)))
+    amendments <- Gen.containerOf[List, Amendment](amendmentsGen)
   } yield ChargeDetails(
     chargeId = chargeId,
     creationDate = creationDate,
@@ -121,11 +121,11 @@ object HipResponseGenerator {
     refundDate <- localDateGen
     refundMethod <- Gen.option(Gen.oneOf("Bank Transfer", "Cheque", "Credit Card Refund"))
     refundRequestDate <- Gen.option(localDateGen)
-    refundRequestAmount <- Gen.choose(1.0, 50000.0)
+    refundRequestAmount <- Gen.choose(1.0, 50000.0).map(BigDecimal(_))
     refundDescription <- Gen.option(
       Gen.oneOf("Overpayment", "Double Payment", "Incorrect Charge", "System Error")
     )
-    interestAddedToRefund <- Gen.option(Gen.choose(0.0, 1000.0))
+    interestAddedToRefund <- Gen.option(Gen.choose(0.0, 1000.0)).map(_.map(BigDecimal(_)))
     totalRefundAmount <- Gen.choose(1.0, 55000.0)
     refundStatus <- Gen.option(Gen.oneOf("Pending", "Approved", "Processed", "Rejected"))
   } yield RefundDetails(
@@ -145,7 +145,7 @@ object HipResponseGenerator {
     paymentMethod <- Gen.option(Gen.oneOf("Bank Transfer", "Credit Card", "Direct Debit", "Cheque"))
     paymentDate <- localDateGen
     processedDate <- Gen.option(localDateGen)
-    allocationReference <- Gen.option(Gen.listOf(Gen.alphaNumStr))
+    allocationReference <- Gen.listOf(Gen.alphaNumStr)
   } yield PaymentHistoryDetails(
     paymentAmount = paymentAmount,
     paymentReference = paymentReference,
@@ -157,11 +157,11 @@ object HipResponseGenerator {
 
   val hipResponseGen: Gen[HipResponse] = for {
     balanceDetails <- balanceDetailsGen
-    chargeDetails <- Gen.option(Gen.containerOf[Set, ChargeDetails](chargeDetailsGen))
-    refundDetails <- Gen.option(Gen.containerOf[Set, RefundDetails](refundDetailsGen))
-    paymentHistoryDetails <- Gen.option(
-      Gen.containerOf[Set, PaymentHistoryDetails](paymentHistoryDetailsGen)
-    )
+    chargeDetails <- Gen.containerOf[List, ChargeDetails](chargeDetailsGen)
+    refundDetails <- Gen.containerOf[List, RefundDetails](refundDetailsGen)
+    paymentHistoryDetails <-
+      Gen.containerOf[List, PaymentHistoryDetails](paymentHistoryDetailsGen)
+
   } yield HipResponse(
     balanceDetails = balanceDetails,
     chargeDetails = chargeDetails,
