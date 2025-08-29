@@ -118,7 +118,7 @@ object HipResponseGenerator {
   )
 
   val refundDetailsGen: Gen[RefundDetails] = for {
-    refundDate <- localDateGen
+    refundDate <- Gen.option(localDateGen)
     refundMethod <- Gen.option(Gen.oneOf("Bank Transfer", "Cheque", "Credit Card Refund"))
     refundRequestDate <- Gen.option(localDateGen)
     refundRequestAmount <- Gen.choose(1.0, 50000.0).map(BigDecimal(_))
