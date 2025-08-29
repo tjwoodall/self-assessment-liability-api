@@ -17,7 +17,7 @@
 package connectors
 
 import models.MtdId
-import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
+import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable_Error}
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
@@ -51,7 +51,7 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
     "return Service_Currently_Unavailable error in case of any other response" in {
       simulateGet(serviceUrl("invalidNino"), UNAUTHORIZED, "")
       val result = connector.getMtdId("invalidNino")
-      result.failed.futureValue mustBe Service_Currently_Unavailable
+      result.failed.futureValue mustBe Service_Currently_Unavailable_Error
     }
     "return Downstream_Error error in case of bad request response" in {
       simulateGet(serviceUrl("invalidNino"), BAD_REQUEST, "")

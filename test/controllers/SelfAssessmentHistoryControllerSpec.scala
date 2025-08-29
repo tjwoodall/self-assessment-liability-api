@@ -32,8 +32,9 @@
 
 package controllers
 
+import controllers.actions.AuthenticateRequestAction
 import models.RequestData
-import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found}
+import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found_Error}
 import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.when
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -142,7 +143,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase {
 
     "return not found if no data is found in HIP for the utr provided" in {
       when(mockService.viewAccountService(meq("1234567890"), any())(any()))
-        .thenReturn(Future.failed(No_Data_Found))
+        .thenReturn(Future.failed(No_Data_Found_Error))
 
       val application = new GuiceApplicationBuilder()
         .overrides(

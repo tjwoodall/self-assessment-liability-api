@@ -16,7 +16,7 @@
 
 package services
 import connectors.{CitizenDetailsConnector, HipConnector, MtdIdentifierLookupConnector}
-import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found}
+import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found_Error}
 import models.{MtdId, ServiceErrors}
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.{any, eq as meq}
@@ -135,7 +135,7 @@ class SelfAssessmentServiceSpec extends SpecBase {
     "Return failure if call to hip fails" in {
       val today = LocalDate.now()
       val randomError: ServiceErrors =
-        Random().shuffle(List(Json_Validation_Error, No_Data_Found, Downstream_Error)).head
+        Random().shuffle(List(Json_Validation_Error, No_Data_Found_Error, Downstream_Error)).head
       when(
         mockHipConnector.getSelfAssessmentData(
           meq("utr"),

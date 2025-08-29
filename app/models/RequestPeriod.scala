@@ -16,21 +16,6 @@
 
 package models
 
-import play.api.libs.json.{Json, OFormat}
-
 import java.time.LocalDate
 
-case class RefundDetails(
-    refundDate: Option[LocalDate],
-    refundMethod: Option[String],
-    refundRequestDate: Option[LocalDate],
-    refundRequestAmount: BigDecimal,
-    refundDescription: Option[String],
-    interestAddedToRefund: Option[BigDecimal],
-    totalRefundAmount: BigDecimal,
-    refundStatus: Option[String]
-)
-
-object RefundDetails {
-  implicit val format: OFormat[RefundDetails] = Json.format[RefundDetails]
-}
+case class RequestPeriod (startDate: LocalDate, endDate:LocalDate)

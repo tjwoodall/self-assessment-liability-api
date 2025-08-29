@@ -17,8 +17,9 @@
 package controllers
 
 import config.AppConfig
+import controllers.actions.AuthenticateRequestAction
 import models.ApiErrorResponses
-import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
+import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable_Error}
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.*
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -27,7 +28,7 @@ import play.api.inject.bind
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.mvc.{Action, AnyContent, PlayBodyParsers}
 import play.api.test.FakeRequest
-import play.api.test.Helpers.{running, *}
+import play.api.test.Helpers.*
 import services.SelfAssessmentService
 import shared.{HttpWireMock, SpecBase}
 import uk.gov.hmrc.auth.core.*
@@ -259,7 +260,7 @@ class AuthenticateRequestActionSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(InsufficientEnrolments()))
 
         when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
-          .thenReturn(Future.failed(Service_Currently_Unavailable))
+          .thenReturn(Future.failed(Service_Currently_Unavailable_Error))
 
         running(app) {
           val result = methodNeedingAuthentication(validUtr)(FakeRequest())
@@ -401,7 +402,7 @@ class AuthenticateRequestActionSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(InsufficientEnrolments()))
 
         when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
-          .thenReturn(Future.failed(Service_Currently_Unavailable))
+          .thenReturn(Future.failed(Service_Currently_Unavailable_Error))
 
         running(app) {
           val result = methodNeedingAuthentication(validUtr)(FakeRequest())
@@ -588,7 +589,7 @@ class AuthenticateRequestActionSpec extends SpecBase with HttpWireMock {
           .thenReturn(Future.failed(InsufficientEnrolments()))
 
         when(selfAssessmentService.getMtdIdFromUtr(eqTo(validUtr))(any()))
-          .thenReturn(Future.failed(Service_Currently_Unavailable))
+          .thenReturn(Future.failed(Service_Currently_Unavailable_Error))
 
         running(app) {
           val result = methodNeedingAuthentication(validUtr)(FakeRequest())

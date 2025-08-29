@@ -76,7 +76,7 @@ class HipConnectorSpec extends SpecBase with HttpWireMock {
     "return expected error if 404 response is received" in {
       simulateGet(serviceUrl, NOT_FOUND, "")
       val result = connector.getSelfAssessmentData(utr, date, date)
-      result.failed.futureValue mustBe No_Data_Found
+      result.failed.futureValue mustBe No_Data_Found_Error
     }
 
     "return expected error if 422 response is received" in {

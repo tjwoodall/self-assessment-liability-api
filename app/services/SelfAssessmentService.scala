@@ -20,8 +20,9 @@ import connectors.{CitizenDetailsConnector, HipConnector, MtdIdentifierLookupCon
 import models.ServiceErrors.Downstream_Error
 import models.HipResponse
 import uk.gov.hmrc.http.HeaderCarrier
+import utils.constants.UkTaxYears.GetPastTwoUkTaxYears
 
-import java.time.LocalDate
+import java.time.{LocalDate, Month, ZoneOffset}
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -37,20 +38,17 @@ class SelfAssessmentService @Inject() (
     } yield mtdId.mtdbsa
   }
 
-  def viewAccountService(utr: String, fromDate: Option[String])(implicit
+  def viewAccountService(utr: String, dateFrom: LocalDate, dateTo: LocalDate)(implicit
       hc: HeaderCarrier
   ): Future[HipResponse] = {
-    val now: LocalDate = LocalDate.now()
-
-    val taxYears = fromDate
-      .map { date => (LocalDate.parse(date), now) }
-      .getOrElse((now.minusYears(2), now))
     for {
       hipResponse <- hipConnector.getSelfAssessmentData(
         utr,
-        taxYears._1,
-        taxYears._2
+        dateFrom,
+        dateTo
       )
     } yield hipResponse
   }
+
+
 }

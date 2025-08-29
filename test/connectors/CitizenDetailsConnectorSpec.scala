@@ -16,7 +16,7 @@
 
 package connectors
 
-import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable}
+import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable_Error}
 import play.api.Application
 import play.api.http.Status.*
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -58,7 +58,7 @@ class CitizenDetailsConnectorSpec extends SpecBase with HttpWireMock {
     "return Service_Currently_Unavailable erro in case of any other response else than 404 200 and 500" in {
       simulateGet(serviceUrl("invalidUtr"), BAD_REQUEST, "")
       val result = connector.getNino("invalidUtr")
-      result.failed.futureValue mustBe Service_Currently_Unavailable
+      result.failed.futureValue mustBe Service_Currently_Unavailable_Error
     }
     "return Downstream_Error erro in case of a 500 response" in {
       simulateGet(serviceUrl("invalidUtr"), INTERNAL_SERVER_ERROR, "")

@@ -16,41 +16,38 @@
 
 package controllers
 
+import controllers.actions.{AuthenticateRequestAction, ValidateRequestAction}
 import models.ApiErrorResponses
-import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found}
+import models.ServiceErrors.{Downstream_Error, Invalid_Start_Date_Error, Invalid_Utr_Error, Json_Validation_Error, No_Data_Found_Error}
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import services.SelfAssessmentService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import utils.constants.ErrorMessageConstansts.{
-  BAD_REQUEST_RESPONSE,
-  INTERNAL_ERROR_RESPONSE,
-  NOT_FOUND_RESPONSE,
-  SERVICE_UNAVAILABLE_RESPONSE
-}
+import utils.constants.ErrorMessageConstansts.{BAD_REQUEST_RESPONSE, INTERNAL_ERROR_RESPONSE, NOT_FOUND_RESPONSE, SERVICE_UNAVAILABLE_RESPONSE}
 
 import java.time.format.DateTimeParseException
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext
 
 class SelfAssessmentHistoryController @Inject() (
-    authenticate: AuthenticateRequestAction,
-    cc: ControllerComponents,
-    service: SelfAssessmentService
+                                                  authenticateUser: AuthenticateRequestAction,
+                                                  validateRequest: ValidateRequestAction,
+                                                  cc: ControllerComponents,
+                                                  service: SelfAssessmentService
 )(implicit ec: ExecutionContext)
     extends BackendController(cc) {
 
   def getYourSelfAssessmentData(utr: String, fromDate: Option[String]): Action[AnyContent] =
-    authenticate(utr).async { implicit request =>
+    (Action andThen validateRequest(utr) andThen authenticateUser).async { implicit request =>
       (for {
-        selfAssessmentData <- service.viewAccountService(utr, fromDate)
+        selfAssessmentData <- service.viewAccountService(utr, request.requestPeriod.startDate, request.requestPeriod.endDate)
       } yield Ok(Json.toJson(selfAssessmentData)))
         .recover {
-          case _: DateTimeParseException =>
+          case Invalid_Utr_Error | Invalid_Start_Date_Error =>
             BadRequest(ApiErrorResponses(BAD_REQUEST_RESPONSE).asJson)
           case Json_Validation_Error =>
             InternalServerError(ApiErrorResponses(INTERNAL_ERROR_RESPONSE).asJson)
-          case No_Data_Found => NotFound(ApiErrorResponses(NOT_FOUND_RESPONSE).asJson)
+          case No_Data_Found_Error => NotFound(ApiErrorResponses(NOT_FOUND_RESPONSE).asJson)
           case Downstream_Error =>
             ServiceUnavailable(ApiErrorResponses(SERVICE_UNAVAILABLE_RESPONSE).asJson)
         }
