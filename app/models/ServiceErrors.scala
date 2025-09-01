@@ -27,7 +27,7 @@ object ServiceErrors {
   case object No_Data_Found_Error extends ServiceErrors
   case object Invalid_Start_Date_Error extends ServiceErrors
   case object Invalid_Utr_Error extends ServiceErrors
+  case object Missing_Auth_Token extends ServiceErrors
   case object Unauthorised_Error extends ServiceErrors
   case object Forbidden_Error extends ServiceErrors
-  case object Bad_Request_Error extends ServiceErrors
 }

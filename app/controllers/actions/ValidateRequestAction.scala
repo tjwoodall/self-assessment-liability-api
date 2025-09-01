@@ -19,21 +19,22 @@ package controllers.actions
 import com.google.inject.Inject
 import models.ServiceErrors.{Invalid_Start_Date_Error, Invalid_Utr_Error}
 import models.{RequestPeriod, RequestWithUtr}
-import play.api.mvc.{ActionTransformer, *}
+import play.api.mvc.*
+import utils.UkTaxYears.{GetPastTwoUkTaxYears, isInvalidDate}
 import utils.UtrValidator.isValidUtr
-import utils.constants.UkTaxYears.{GetPastTwoUkTaxYears, isInvalidDate}
 
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
-case class ValidateRequestAction @Inject() (
-    parser: BodyParsers.Default
-)(implicit val ec: ExecutionContext) {
+class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) {
 
   def apply(utr: String): ActionTransformer[Request, RequestWithUtr] =
     new ActionTransformer[Request, RequestWithUtr] {
 
       override protected def executionContext: ExecutionContext = ec
+
       override protected def transform[A](request: Request[A]): Future[RequestWithUtr[A]] = {
 
         if (isValidUtr(utr)) {
@@ -49,8 +50,8 @@ case class ValidateRequestAction @Inject() (
                   request = request
                 )
               )
-            ) { dateStr =>
-              validateAndParseDate(dateStr).map(date =>
+            ) { dateInStringFormat =>
+              validateAndParseDate(dateInStringFormat).map(date =>
                 RequestWithUtr(
                   utr = utr,
                   requestPeriod = RequestPeriod(startDate = date, endDate = requestPeriod._2),
@@ -62,13 +63,20 @@ case class ValidateRequestAction @Inject() (
           Future.failed(Invalid_Utr_Error)
         }
       }
-
-      private def validateAndParseDate(dateStr: String): Future[LocalDate] = {
-        val date = LocalDate.parse(dateStr)
-        if (isInvalidDate(dateToValidate = date)) Future.failed(Invalid_Start_Date_Error)
-        else Future.successful(date)
+      private def validateAndParseDate(dateInStringFormat: String): Future[LocalDate] = {
+        Future
+          .fromTry(Try(LocalDate.parse(dateInStringFormat)))
+          .flatMap { parsedDate =>
+            if (isInvalidDate(dateToValidate = parsedDate)) {
+              Future.failed(Invalid_Start_Date_Error)
+            } else {
+              Future.successful(parsedDate)
+            }
+          }
+          .recoverWith { case _: DateTimeParseException =>
+            Future.failed(Invalid_Start_Date_Error)
+          }
       }
-
     }
 
 }

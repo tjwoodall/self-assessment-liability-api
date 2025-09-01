@@ -54,7 +54,7 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extend
         case response if response.status == 200 =>
           response.json.validate[HipResponse] match {
             case JsSuccess(hipResponse, _) => Future.successful(hipResponse)
-            case JsError(error)            =>
+            case JsError(error) =>
               logger.warn(s"json error because $error")
               Future.failed(Json_Validation_Error)
           }

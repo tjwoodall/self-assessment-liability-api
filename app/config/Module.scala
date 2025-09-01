@@ -17,7 +17,6 @@
 package config
 
 import com.google.inject.AbstractModule
-import controllers.actions.ValidateRequestAction
 
 class Module extends AbstractModule {
 

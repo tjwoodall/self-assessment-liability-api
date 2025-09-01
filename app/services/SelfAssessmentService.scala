@@ -17,12 +17,11 @@
 package services
 
 import connectors.{CitizenDetailsConnector, HipConnector, MtdIdentifierLookupConnector}
-import models.ServiceErrors.Downstream_Error
 import models.HipResponse
+import models.ServiceErrors.Downstream_Error
 import uk.gov.hmrc.http.HeaderCarrier
-import utils.constants.UkTaxYears.GetPastTwoUkTaxYears
 
-import java.time.{LocalDate, Month, ZoneOffset}
+import java.time.LocalDate
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -49,6 +48,5 @@ class SelfAssessmentService @Inject() (
       )
     } yield hipResponse
   }
-
 
 }

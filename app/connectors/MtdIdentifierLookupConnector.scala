@@ -37,7 +37,7 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
         case response if response.status == 200 => response.json.as[MtdId].toFuture
         case response if response.status == 500 => Future.failed(Downstream_Error)
         case response if response.status == 400 => Future.failed(Downstream_Error)
-        case _                                  => Future.failed(Service_Currently_Unavailable_Error)
+        case _ => Future.failed(Service_Currently_Unavailable_Error)
       }
       .recoverWith { case _: JsResultException =>
         Future.failed(Downstream_Error)

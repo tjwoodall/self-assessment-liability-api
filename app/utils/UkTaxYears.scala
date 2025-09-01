@@ -14,22 +14,33 @@
  * limitations under the License.
  */
 
-package utils.constants
+package utils
 
 import java.time.{LocalDate, Month, ZoneOffset}
 
 object UkTaxYears {
-   def GetPastTwoUkTaxYears(currentDate:LocalDate = LocalDate.now(ZoneOffset.UTC))  : (LocalDate, LocalDate) = {
+  def GetPastTwoUkTaxYears(
+      currentDate: LocalDate = LocalDate.now(ZoneOffset.UTC)
+  ): (LocalDate, LocalDate) = {
     val currentYearStart = LocalDate.of(currentDate.getYear, Month.APRIL, 6)
     if (currentDate.isBefore(currentYearStart)) {
-      (LocalDate.of(currentDate.getYear -2 , Month.APRIL, 6), currentDate)
-    } else{
+      (LocalDate.of(currentDate.getYear - 2, Month.APRIL, 6), currentDate)
+    } else {
       (LocalDate.of(currentDate.getYear - 1, Month.APRIL, 6), currentDate)
     }
   }
-   
-   def isInvalidDate(currentDate:LocalDate = LocalDate.now(ZoneOffset.UTC), dateToValidate: LocalDate): Boolean = {
-     val startOfSevenTaxYearsAgo = LocalDate.of(currentDate.getYear - 7 ,Month.APRIL, 6 )
-     if (dateToValidate.isBefore(startOfSevenTaxYearsAgo) || dateToValidate.isAfter(currentDate)) true else false
-   }
+
+  def isInvalidDate(
+      currentDate: LocalDate = LocalDate.now(ZoneOffset.UTC),
+      dateToValidate: LocalDate
+  ): Boolean = {
+    val isBeforeTax: Boolean =
+      if (currentDate.isBefore(LocalDate.of(currentDate.getYear, 4, 6))) true else false
+    val startOfSevenTaxYearsAgo =
+      if (isBeforeTax) LocalDate.of(currentDate.getYear - 7, Month.APRIL, 6)
+      else LocalDate.of(currentDate.getYear - 6, Month.APRIL, 6)
+    if (dateToValidate.isBefore(startOfSevenTaxYearsAgo) || dateToValidate.isAfter(currentDate))
+      true
+    else false
+  }
 }

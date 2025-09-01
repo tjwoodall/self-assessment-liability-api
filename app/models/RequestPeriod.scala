@@ -18,4 +18,4 @@ package models
 
 import java.time.LocalDate
 
-case class RequestPeriod (startDate: LocalDate, endDate:LocalDate)
+case class RequestPeriod(startDate: LocalDate, endDate: LocalDate)

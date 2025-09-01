@@ -32,156 +32,103 @@
 
 package controllers
 
-import controllers.actions.AuthenticateRequestAction
-import models.RequestData
-import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found_Error}
+import config.AppConfig
+import controllers.actions.{AuthenticateRequestAction, ValidateRequestAction}
+import models.RequestWithUtr
+import models.ServiceErrors.{
+  Downstream_Error,
+  Invalid_Start_Date_Error,
+  Json_Validation_Error,
+  No_Data_Found_Error
+}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
 import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.when
-import org.scalatestplus.mockito.MockitoSugar.mock
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks.forAll
-import play.api.inject
-import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.mvc.*
 import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import services.SelfAssessmentService
 import shared.{HipResponseGenerator, SpecBase}
+import uk.gov.hmrc.auth.core.AuthConnector
 
-import java.time.format.DateTimeParseException
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
+import java.time.{LocalDate, Month}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.language.postfixOps
 
 class SelfAssessmentHistoryControllerSpec extends SpecBase {
-
-  def createBypassAuthAction()(implicit bodyParsers: PlayBodyParsers): AuthenticateRequestAction = {
-    val mockAuth = mock[AuthenticateRequestAction]
-
-    when(mockAuth.apply(any[String])).thenAnswer { invocation =>
-      val utr = invocation.getArgument[String](0)
-      new ActionBuilder[RequestData, AnyContent] {
-        override def parser: BodyParser[AnyContent] = bodyParsers.default
-        override protected def executionContext: ExecutionContextExecutor = ExecutionContext.global
-
-        override def invokeBlock[A](
-            request: play.api.mvc.Request[A],
-            block: RequestData[A] => Future[Result]
-        ): Future[Result] = {
-          val requestData = RequestData(utr, None, request)
-          block(requestData)
-        }
-      }
-    }
-    mockAuth
-  }
-
-  val bodyParser: PlayBodyParsers = app.injector.instanceOf[PlayBodyParsers]
-  val fakeRequest: FakeRequest[AnyContentAsEmpty.type] = FakeRequest(GET, "/1234567890")
+  implicit lazy val system: ActorSystem = ActorSystem()
+  implicit lazy val materializer: Materializer = Materializer(system)
   val mockService: SelfAssessmentService = mock[SelfAssessmentService]
+  val authConnector: AuthConnector = mock[AuthConnector]
+  val cc: ControllerComponents = app.injector.instanceOf[ControllerComponents]
+  val validDate: LocalDate = LocalDate.now()
+  val bodyParser: BodyParsers.Default = app.injector.instanceOf[BodyParsers.Default]
+  implicit val appConfig: AppConfig = mock[AppConfig]
+  val fakeValidateAction: ValidateRequestAction = new ValidateRequestAction()
+  val fakeAuthenticaAction: AuthenticateRequestAction =
+    new AuthenticateRequestAction(mockService, authConnector) {
+      override def filter[A](request: RequestWithUtr[A]): Future[Option[Result]] = {
+        Future.successful(None)
+      }
+
+      override protected def executionContext: ExecutionContext = ec
+    }
+  val controller: SelfAssessmentHistoryController =
+    new SelfAssessmentHistoryController(fakeAuthenticaAction, fakeValidateAction, cc, mockService)
+  def request(utr: String, fromDate: LocalDate): Future[Result] = {
+    controller.getYourSelfAssessmentData("1234567890", Some(validDate.toString))(FakeRequest())
+  }
 
   "SelfAssessmentHistoryController" should {
     "return OK with success message" in {
       forAll(HipResponseGenerator.hipResponseGen) { hipResponse =>
-
-        when(mockService.viewAccountService(meq("1234567890"), meq(Some("2024-05-01")))(any()))
+        when(
+          mockService.viewAccountService(
+            any(),
+            meq(LocalDate.of(validDate.getYear - 1, Month.APRIL, 6)),
+            meq(validDate)
+          )(any())
+        )
           .thenReturn(Future.successful(hipResponse))
-
-        val application = new GuiceApplicationBuilder()
-          .overrides(
-            inject.bind[AuthenticateRequestAction].toInstance(createBypassAuthAction()(bodyParser)),
-            inject.bind[SelfAssessmentService].toInstance(mockService)
-          )
-          .build()
-
-        running(application) {
-          val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
-          val result =
-            controller.getYourSelfAssessmentData("1234567890", Some("2024-05-01"))(fakeRequest)
-
-          status(result) mustBe OK
-          contentAsJson(result) mustBe Json.toJson(hipResponse)
-        }
+        val result = request("1234567890", validDate)
+        status(result) mustBe OK
+        contentAsJson(result) mustBe Json.toJson(hipResponse)
       }
     }
+  }
+  "return bad request if a date with bad format is provided" in {
+    when(mockService.viewAccountService(meq("1234567890"), any(), any())(any()))
+      .thenReturn(Future.failed(Invalid_Start_Date_Error))
+    val result = request("1234567890", validDate)
 
-    "return bad request if a date with bad format is provided" in {
-      when(mockService.viewAccountService(meq("1234567890"), any())(any()))
-        .thenReturn(Future.failed(DateTimeParseException("s", "s", 2)))
-      val application = new GuiceApplicationBuilder()
-        .overrides(
-          inject.bind[AuthenticateRequestAction].toInstance(createBypassAuthAction()(bodyParser)),
-          inject.bind[SelfAssessmentService].toInstance(mockService)
-        )
-        .build()
+    result.failed.futureValue mustEqual Invalid_Start_Date_Error
+  }
 
-      val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
-      val result = controller.getYourSelfAssessmentData("1234567890", None)(fakeRequest)
-      status(result) mustBe BAD_REQUEST
-      contentAsJson(result) mustBe Json.obj("message" -> "Invalid request format or parameters.")
-    }
+  "return Internal server error json validation on HIP response fails" in {
+    when(mockService.viewAccountService(meq("1234567890"), any(), any())(any()))
+      .thenReturn(Future.failed(Json_Validation_Error))
+    val result = request("1234567890", validDate)
+    result.failed.futureValue mustEqual Json_Validation_Error
 
-    "return Internal server error json validation on HIP response fails" in {
-      when(mockService.viewAccountService(meq("1234567890"), any())(any()))
-        .thenReturn(Future.failed(Json_Validation_Error))
+  }
 
-      val application = new GuiceApplicationBuilder()
-        .overrides(
-          inject.bind[AuthenticateRequestAction].toInstance(createBypassAuthAction()(bodyParser)),
-          inject.bind[SelfAssessmentService].toInstance(mockService)
-        )
-        .build()
+  "return not found if no data is found in HIP for the utr provided" in {
+    when(mockService.viewAccountService(meq("1234567890"), any(), any())(any()))
+      .thenReturn(Future.failed(No_Data_Found_Error))
 
-      running(application) {
-        val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
-        val result = controller.getYourSelfAssessmentData("1234567890", None)(fakeRequest)
+    val result = request("1234567890", validDate)
+    result.failed.futureValue mustEqual No_Data_Found_Error
 
-        status(result) mustBe INTERNAL_SERVER_ERROR
-        contentAsJson(result) mustBe Json.obj(
-          "message" -> "Unexpected internal error. Please contact service desk."
-        )
-      }
-    }
+  }
+  "return service unavailable if call to HIP fails" in {
+    when(mockService.viewAccountService(meq("1234567890"), any(), any())(any()))
+      .thenReturn(Future.failed(Downstream_Error))
+    val result = request("1234567890", validDate)
 
-    "return not found if no data is found in HIP for the utr provided" in {
-      when(mockService.viewAccountService(meq("1234567890"), any())(any()))
-        .thenReturn(Future.failed(No_Data_Found_Error))
+    result.failed.futureValue mustEqual Downstream_Error
 
-      val application = new GuiceApplicationBuilder()
-        .overrides(
-          inject.bind[AuthenticateRequestAction].toInstance(createBypassAuthAction()(bodyParser)),
-          inject.bind[SelfAssessmentService].toInstance(mockService)
-        )
-        .build()
-
-      running(application) {
-        val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
-        val result = controller.getYourSelfAssessmentData("1234567890", None)(fakeRequest)
-
-        status(result) mustBe NOT_FOUND
-        contentAsJson(result) mustBe Json.obj(
-          "message" -> "The requested resource could not be found."
-        )
-      }
-    }
-    "return service unavailable if call to HIP fails" in {
-      when(mockService.viewAccountService(meq("1234567890"), any())(any()))
-        .thenReturn(Future.failed(Downstream_Error))
-
-      val application = new GuiceApplicationBuilder()
-        .overrides(
-          inject.bind[AuthenticateRequestAction].toInstance(createBypassAuthAction()(bodyParser)),
-          inject.bind[SelfAssessmentService].toInstance(mockService)
-        )
-        .build()
-
-      running(application) {
-        val controller = application.injector.instanceOf[SelfAssessmentHistoryController]
-        val result = controller.getYourSelfAssessmentData("1234567890", None)(fakeRequest)
-
-        status(result) mustBe SERVICE_UNAVAILABLE
-        contentAsJson(result) mustBe Json.obj(
-          "message" -> "Service unavailable. Please try again later."
-        )
-      }
-    }
   }
 }

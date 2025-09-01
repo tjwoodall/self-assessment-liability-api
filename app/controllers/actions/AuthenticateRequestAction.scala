@@ -17,18 +17,10 @@
 package controllers.actions
 
 import config.AppConfig
-import models.{ApiErrorResponses, RequestWithUtr}
-import models.ServiceErrors.{
-  Bad_Request_Error,
-  Downstream_Error,
-  Forbidden_Error,
-  Invalid_Start_Date_Error,
-  Invalid_Utr_Error,
-  Unauthorised_Error
-}
+import models.RequestWithUtr
+import models.ServiceErrors.Unauthorised_Error
 import play.api.Logging
 import play.api.mvc.*
-import play.api.mvc.Results.{BadRequest, Forbidden, InternalServerError, ServiceUnavailable}
 import services.SelfAssessmentService
 import uk.gov.hmrc.auth.core.*
 import uk.gov.hmrc.auth.core.AffinityGroup.{Agent, Individual, Organisation}
@@ -36,15 +28,7 @@ import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{affinityGroup, confidenceLe
 import uk.gov.hmrc.auth.core.retrieve.~
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.http.HeaderCarrierConverter
-import utils.FutureConverter.FutureOps
 import utils.SelfAssessmentEnrolments.*
-import utils.constants.ErrorMessageConstants.{
-  badRequestMessage,
-  forbiddenMessage,
-  internalErrorMessage,
-  serviceUnavailableMessage
-}
-
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -69,12 +53,6 @@ class AuthenticateRequestAction @Inject() (
           dealWithNonAgentAffinity(request)
         case Some(Agent) ~ _ =>
           authenticateAgent(request)
-            .recover {
-              case _: NoActiveSession =>
-                Some(BadRequest(ApiErrorResponses(badRequestMessage).asJson))
-              case _ =>
-                Some(ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson))
-            }
       }
   }
 
@@ -102,14 +80,6 @@ class AuthenticateRequestAction @Inject() (
             Future.successful(None)
           }
         }
-        .recover {
-          case _: AuthorisationException =>
-            Some(Forbidden(ApiErrorResponses(forbiddenMessage).asJson))
-          case Downstream_Error =>
-            Some(InternalServerError(ApiErrorResponses(internalErrorMessage).asJson))
-          case _ =>
-            Some(ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson))
-        }
     }
   }
 
@@ -125,15 +95,10 @@ class AuthenticateRequestAction @Inject() (
           .flatMap { mtdId =>
             authorised(delegatedMtdEnrolment(mtdId)) {
               Future.successful(None)
+            }.recoverWith { case _: AuthorisationException =>
+              throw Unauthorised_Error
             }
           }
-      }.recover {
-        case _: AuthorisationException =>
-          Some(Forbidden(ApiErrorResponses(forbiddenMessage).asJson))
-        case Downstream_Error =>
-          Some(InternalServerError(ApiErrorResponses(internalErrorMessage).asJson))
-        case _ =>
-          Some(ServiceUnavailable(ApiErrorResponses(serviceUnavailableMessage).asJson))
       }
     }
   }

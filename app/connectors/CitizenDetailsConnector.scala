@@ -43,7 +43,7 @@ class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppCon
             )
         case response if response.status == 500 => Future.failed(Downstream_Error)
         case response if response.status == 404 => Future.failed(Downstream_Error)
-        case _                                  => Future.failed(Service_Currently_Unavailable_Error)
+        case _ => Future.failed(Service_Currently_Unavailable_Error)
       }
   }
 }

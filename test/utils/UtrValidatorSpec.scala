@@ -24,15 +24,16 @@ class UtrValidatorSpec extends SpecBase {
     "return true for valid UTRs" in {
       UtrValidator.isValidUtr("1234567890") mustBe true
       UtrValidator.isValidUtr("12345") mustBe true
-      UtrValidator.isValidUtr("A12345678") mustBe true
-      UtrValidator.isValidUtr("AB123") mustBe true
+
     }
 
     "return false for invalid UTRs" in {
       UtrValidator.isValidUtr("") mustBe false
       UtrValidator.isValidUtr("12345678901") mustBe false
       UtrValidator.isValidUtr("ABC@123") mustBe false
-      UtrValidator.isValidUtr("ABC 123") mustBe false
+      UtrValidator.isValidUtr("ABC123") mustBe false
+      UtrValidator.isValidUtr("A12345678") mustBe false
+      UtrValidator.isValidUtr("AB123") mustBe false
     }
   }
 

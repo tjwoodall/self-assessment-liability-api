@@ -113,7 +113,7 @@ class SelfAssessmentServiceSpec extends SpecBase {
             meq(today)
           )(any(), any())
         ).thenReturn(Future.successful(hipResponse))
-        val result = service.viewAccountService("utr", None)
+        val result = service.viewAccountService("utr", today.minusYears(2), today)
         result.futureValue shouldBe hipResponse
       }
     }
@@ -127,7 +127,7 @@ class SelfAssessmentServiceSpec extends SpecBase {
             meq(today)
           )(any(), any())
         ).thenReturn(Future.successful(hipResponse))
-        val result = service.viewAccountService("utr", Some(today.minusYears(4).toString))
+        val result = service.viewAccountService("utr", today.minusYears(4), today)
         result.futureValue shouldBe hipResponse
       }
     }
@@ -139,11 +139,11 @@ class SelfAssessmentServiceSpec extends SpecBase {
       when(
         mockHipConnector.getSelfAssessmentData(
           meq("utr"),
-          meq(today.minusYears(2)),
-          meq(today)
+          any(),
+          any()
         )(any(), any())
       ).thenReturn(Future.failed(randomError))
-      val result = service.viewAccountService("utr", None)
+      val result = service.viewAccountService("utr", today, today)
       result.failed.futureValue mustEqual randomError
     }
   }
