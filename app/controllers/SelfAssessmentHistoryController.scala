@@ -17,7 +17,12 @@
 package controllers
 
 import models.ApiErrorResponses
-import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found}
+import models.ServiceErrors.{
+  Downstream_Error,
+  Json_Validation_Error,
+  No_Data_Found,
+  Service_Currently_Unavailable
+}
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import services.SelfAssessmentService
@@ -48,10 +53,10 @@ class SelfAssessmentHistoryController @Inject() (
         .recover {
           case _: DateTimeParseException =>
             BadRequest(ApiErrorResponses(BAD_REQUEST_RESPONSE).asJson)
-          case Json_Validation_Error =>
+          case Json_Validation_Error | Downstream_Error =>
             InternalServerError(ApiErrorResponses(INTERNAL_ERROR_RESPONSE).asJson)
           case No_Data_Found => NotFound(ApiErrorResponses(NOT_FOUND_RESPONSE).asJson)
-          case Downstream_Error =>
+          case Service_Currently_Unavailable =>
             ServiceUnavailable(ApiErrorResponses(SERVICE_UNAVAILABLE_RESPONSE).asJson)
         }
     }

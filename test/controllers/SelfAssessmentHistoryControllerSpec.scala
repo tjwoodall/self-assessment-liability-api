@@ -33,7 +33,12 @@
 package controllers
 
 import models.RequestData
-import models.ServiceErrors.{Downstream_Error, Json_Validation_Error, No_Data_Found}
+import models.ServiceErrors.{
+  Downstream_Error,
+  Json_Validation_Error,
+  No_Data_Found,
+  Service_Currently_Unavailable
+}
 import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.when
 import org.scalatestplus.mockito.MockitoSugar.mock
@@ -163,7 +168,7 @@ class SelfAssessmentHistoryControllerSpec extends SpecBase {
     }
     "return service unavailable if call to HIP fails" in {
       when(mockService.viewAccountService(meq("1234567890"), any())(any()))
-        .thenReturn(Future.failed(Downstream_Error))
+        .thenReturn(Future.failed(Service_Currently_Unavailable))
 
       val application = new GuiceApplicationBuilder()
         .overrides(
