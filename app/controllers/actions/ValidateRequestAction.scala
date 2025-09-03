@@ -20,7 +20,7 @@ import com.google.inject.Inject
 import models.ServiceErrors.{Invalid_Start_Date_Error, Invalid_Utr_Error}
 import models.{RequestPeriod, RequestWithUtr}
 import play.api.mvc.*
-import utils.UkTaxYears.{GetPastTwoUkTaxYears, isInvalidDate}
+import utils.UkTaxYears.{getPastTwoUkTaxYears, isInvalidDate}
 import utils.UtrValidator.isValidUtr
 
 import java.time.LocalDate
@@ -38,7 +38,7 @@ class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) {
       override protected def transform[A](request: Request[A]): Future[RequestWithUtr[A]] = {
 
         if (isValidUtr(utr)) {
-          val requestPeriod = GetPastTwoUkTaxYears()
+          val requestPeriod = getPastTwoUkTaxYears()
           request
             .getQueryString("fromDate")
             .fold(

@@ -19,7 +19,7 @@ package utils
 import java.time.{LocalDate, Month, ZoneOffset}
 
 object UkTaxYears {
-  def GetPastTwoUkTaxYears(
+  def getPastTwoUkTaxYears(
       currentDate: LocalDate = LocalDate.now(ZoneOffset.UTC)
   ): (LocalDate, LocalDate) = {
     val currentYearStart = LocalDate.of(currentDate.getYear, Month.APRIL, 6)
@@ -39,8 +39,6 @@ object UkTaxYears {
     val startOfSevenTaxYearsAgo =
       if (isBeforeTax) LocalDate.of(currentDate.getYear - 7, Month.APRIL, 6)
       else LocalDate.of(currentDate.getYear - 6, Month.APRIL, 6)
-    if (dateToValidate.isBefore(startOfSevenTaxYearsAgo) || dateToValidate.isAfter(currentDate))
-      true
-    else false
+    dateToValidate.isBefore(startOfSevenTaxYearsAgo) || dateToValidate.isAfter(currentDate)
   }
 }

@@ -24,7 +24,7 @@ import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{contentAsJson, defaultAwaitTimeout, status}
 import shared.SpecBase
-import utils.UkTaxYears.GetPastTwoUkTaxYears
+import utils.UkTaxYears.getPastTwoUkTaxYears
 import java.time.{LocalDate, Month}
 import scala.concurrent.Future
 
@@ -60,7 +60,7 @@ class ValidateRequestActionSpec extends SpecBase {
       val startDate = LocalDate.parse((json \ "startDate").as[String])
       val endDate = LocalDate.parse((json \ "endDate").as[String])
 
-      val expectedDates = GetPastTwoUkTaxYears()
+      val expectedDates = getPastTwoUkTaxYears()
       startDate mustBe expectedDates._1
       endDate mustBe expectedDates._2
     }
@@ -76,7 +76,7 @@ class ValidateRequestActionSpec extends SpecBase {
       (json \ "startDate").as[String] mustBe validDate
 
       val endDate = LocalDate.parse((json \ "endDate").as[String])
-      val expectedEndDate = GetPastTwoUkTaxYears()._2
+      val expectedEndDate = getPastTwoUkTaxYears()._2
       endDate mustBe expectedEndDate
     }
 
