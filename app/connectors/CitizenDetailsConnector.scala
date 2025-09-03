@@ -19,6 +19,7 @@ package connectors
 import config.AppConfig
 import models.CidPerson
 import models.ServiceErrors.*
+import play.api.Logging
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
@@ -26,7 +27,8 @@ import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
+class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppConfig)
+    extends Logging {
   def getNino(
       utr: String
   )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Option[String]] = {
@@ -42,8 +44,12 @@ class CitizenDetailsConnector @Inject() (client: HttpClientV2, appConfig: AppCon
               cid => Future.successful(cid.ids.nino)
             )
         case response if response.status == 500 => Future.failed(Downstream_Error)
-        case response if response.status == 404 => Future.failed(Downstream_Error)
-        case _ => Future.failed(Service_Currently_Unavailable_Error)
+        case response if response.status == 404 =>
+          logger.info("Call to CID failed as no nino found for the utr provided")
+          Future.failed(Downstream_Error)
+        case response =>
+          logger.info(s"Call to CID failed with ${response.status} status")
+          Future.failed(Service_Currently_Unavailable_Error)
       }
   }
 }

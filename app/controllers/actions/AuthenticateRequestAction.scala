@@ -61,6 +61,9 @@ class AuthenticateRequestAction @Inject() (
       request: RequestWithUtr[A]
   )(implicit hc: HeaderCarrier): Future[Option[Result]] = {
     if (confidenceLevel < config.confidenceLevel) {
+      logger.info(
+        s"Authentication of individual failed as the minimum confidence level of ${config.confidenceLevel} not reached"
+      )
       Future.failed(Unauthorised_Error)
     } else {
       dealWithNonAgentAffinity(request)
@@ -96,6 +99,7 @@ class AuthenticateRequestAction @Inject() (
             authorised(delegatedMtdEnrolment(mtdId)) {
               Future.successful(None)
             }.recoverWith { case _: AuthorisationException =>
+              logger.info("Agent authorisation failed as agent client relationship not established")
               throw Unauthorised_Error
             }
           }

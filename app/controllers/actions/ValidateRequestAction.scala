@@ -19,6 +19,7 @@ package controllers.actions
 import com.google.inject.Inject
 import models.ServiceErrors.{Invalid_Start_Date_Error, Invalid_Utr_Error}
 import models.{RequestPeriod, RequestWithUtr}
+import play.api.Logging
 import play.api.mvc.*
 import utils.UkTaxYears.{getPastTwoUkTaxYears, isInvalidDate}
 import utils.UtrValidator.isValidUtr
@@ -28,7 +29,7 @@ import java.time.format.DateTimeParseException
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) {
+class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) extends Logging {
 
   def apply(utr: String): ActionTransformer[Request, RequestWithUtr] =
     new ActionTransformer[Request, RequestWithUtr] {
@@ -68,12 +69,14 @@ class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) {
           .fromTry(Try(LocalDate.parse(dateInStringFormat)))
           .flatMap { parsedDate =>
             if (isInvalidDate(dateToValidate = parsedDate)) {
+              logger.info(s"Rejecting $dateInStringFormat as it is invalid")
               Future.failed(Invalid_Start_Date_Error)
             } else {
               Future.successful(parsedDate)
             }
           }
           .recoverWith { case _: DateTimeParseException =>
+            logger.info(s"parsing of $dateInStringFormat failed")
             Future.failed(Invalid_Start_Date_Error)
           }
       }
