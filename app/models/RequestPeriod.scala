@@ -14,16 +14,8 @@
  * limitations under the License.
  */
 
-package utils
+package models
 
-import scala.util.matching.Regex
+import java.time.LocalDate
 
-object UtrValidator {
-  def isValidUtr(utr: String): Boolean = {
-    val utrPattern: Regex = "^[0-9]{1,10}$".r
-    utrPattern.findFirstMatchIn(utr) match {
-      case Some(_) => true
-      case None    => false
-    }
-  }
-}
+case class RequestPeriod(startDate: LocalDate, endDate: LocalDate)

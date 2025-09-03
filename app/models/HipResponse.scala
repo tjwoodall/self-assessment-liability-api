@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package utils
+package models
 
-import scala.util.matching.Regex
+import play.api.libs.json.{Json, OFormat}
 
-object UtrValidator {
-  def isValidUtr(utr: String): Boolean = {
-    val utrPattern: Regex = "^[0-9]{1,10}$".r
-    utrPattern.findFirstMatchIn(utr) match {
-      case Some(_) => true
-      case None    => false
-    }
-  }
+case class HipResponse(
+    balanceDetails: BalanceDetails,
+    chargeDetails: List[ChargeDetails],
+    refundDetails: List[RefundDetails],
+    paymentHistoryDetails: List[PaymentHistoryDetails]
+)
+
+object HipResponse {
+  implicit val format: OFormat[HipResponse] = Json.format[HipResponse]
 }

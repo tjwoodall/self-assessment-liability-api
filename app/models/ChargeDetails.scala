@@ -16,17 +16,25 @@
 
 package models
 
-sealed abstract class ServiceErrors extends Throwable {
-  override def toString: String = getClass.getSimpleName.replace("$", "")
-}
+import play.api.libs.json.{Json, OFormat}
 
-object ServiceErrors {
-  case object Downstream_Error extends ServiceErrors
-  case object Service_Currently_Unavailable_Error extends ServiceErrors
-  case object Json_Validation_Error extends ServiceErrors
-  case object No_Data_Found_Error extends ServiceErrors
-  case object Invalid_Start_Date_Error extends ServiceErrors
-  case object Invalid_Utr_Error extends ServiceErrors
-  case object Unauthorised_Error extends ServiceErrors
-  case object Forbidden_Error extends ServiceErrors
+import java.time.LocalDate
+
+case class ChargeDetails(
+    chargeId: String,
+    creationDate: LocalDate,
+    chargeType: String,
+    chargeAmount: BigDecimal,
+    outstandingAmount: BigDecimal,
+    taxYear: String,
+    dueDate: LocalDate,
+    outstandingInterestDue: Option[BigDecimal],
+    accruingInterest: Option[BigDecimal],
+    accruingInterestPeriod: Option[AccruingInterestPeriod],
+    accruingInterestRate: Option[BigDecimal],
+    amendments: List[Amendment]
+)
+
+object ChargeDetails {
+  implicit val format: OFormat[ChargeDetails] = Json.format[ChargeDetails]
 }

@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package utils
+package models
 
-import scala.util.matching.Regex
+import play.api.libs.json.{Json, OFormat}
 
-object UtrValidator {
-  def isValidUtr(utr: String): Boolean = {
-    val utrPattern: Regex = "^[0-9]{1,10}$".r
-    utrPattern.findFirstMatchIn(utr) match {
-      case Some(_) => true
-      case None    => false
-    }
-  }
+import java.time.LocalDate
+
+case class AccruingInterestPeriod(
+    interestStartDate: LocalDate,
+    interestEndDate: LocalDate
+)
+
+object AccruingInterestPeriod {
+  implicit val format: OFormat[AccruingInterestPeriod] = Json.format[AccruingInterestPeriod]
 }

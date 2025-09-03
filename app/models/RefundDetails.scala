@@ -14,16 +14,23 @@
  * limitations under the License.
  */
 
-package utils
+package models
 
-import scala.util.matching.Regex
+import play.api.libs.json.{Json, OFormat}
 
-object UtrValidator {
-  def isValidUtr(utr: String): Boolean = {
-    val utrPattern: Regex = "^[0-9]{1,10}$".r
-    utrPattern.findFirstMatchIn(utr) match {
-      case Some(_) => true
-      case None    => false
-    }
-  }
+import java.time.LocalDate
+
+case class RefundDetails(
+    refundDate: Option[LocalDate],
+    refundMethod: Option[String],
+    refundRequestDate: Option[LocalDate],
+    refundRequestAmount: BigDecimal,
+    refundDescription: Option[String],
+    interestAddedToRefund: Option[BigDecimal],
+    totalRefundAmount: BigDecimal,
+    refundStatus: Option[String]
+)
+
+object RefundDetails {
+  implicit val format: OFormat[RefundDetails] = Json.format[RefundDetails]
 }

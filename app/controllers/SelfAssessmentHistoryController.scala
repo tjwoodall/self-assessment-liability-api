@@ -16,23 +16,35 @@
 
 package controllers
 
-import config.AppConfig
+import controllers.actions.{AuthenticateRequestAction, ValidateRequestAction}
+import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import services.SelfAssessmentService
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext
 
 class SelfAssessmentHistoryController @Inject() (
-    authenticate: AuthenticateRequestAction,
-    cc: ControllerComponents
-)(implicit appConfig: AppConfig, ec: ExecutionContext)
-    extends BackendController(cc) {
+    authenticateUser: AuthenticateRequestAction,
+    validateRequest: ValidateRequestAction,
+    cc: ControllerComponents,
+    service: SelfAssessmentService
+)(implicit ec: ExecutionContext)
+    extends BackendController(cc)
+    with Logging {
 
   def getYourSelfAssessmentData(utr: String, fromDate: Option[String]): Action[AnyContent] =
-    authenticate(utr) { implicit request =>
-      Ok(Json.obj("message" -> "Success!"))
+    (Action andThen validateRequest(utr) andThen authenticateUser).async { implicit request =>
+      for {
+        selfAssessmentData <-
+          service.viewAccountService(
+            utr,
+            request.requestPeriod.startDate,
+            request.requestPeriod.endDate
+          )
+      } yield Ok(Json.toJson(selfAssessmentData))
     }
 
 }

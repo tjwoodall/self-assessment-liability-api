@@ -16,7 +16,19 @@
 
 package models
 
-import play.api.mvc.{Request, WrappedRequest}
+import play.api.libs.json.{Json, OFormat}
 
-case class RequestData[A](utr: String, nino: Option[String], request: Request[A])
-    extends WrappedRequest[A](request)
+import java.time.LocalDate
+
+case class Amendment(
+    amendmentDate: LocalDate,
+    amendmentAmount: BigDecimal,
+    amendmentReason: String,
+    updatedChargeAmount: Option[BigDecimal] = None,
+    paymentMethod: Option[String],
+    paymentDate: Option[LocalDate]
+)
+
+object Amendment {
+  implicit val format: OFormat[Amendment] = Json.format[Amendment]
+}

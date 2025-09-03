@@ -14,16 +14,9 @@
  * limitations under the License.
  */
 
-package utils
+package models
 
-import scala.util.matching.Regex
+import play.api.mvc.{Request, WrappedRequest}
 
-object UtrValidator {
-  def isValidUtr(utr: String): Boolean = {
-    val utrPattern: Regex = "^[0-9]{1,10}$".r
-    utrPattern.findFirstMatchIn(utr) match {
-      case Some(_) => true
-      case None    => false
-    }
-  }
-}
+case class RequestWithUtr[A](utr: String, requestPeriod: RequestPeriod, request: Request[A])
+    extends WrappedRequest[A](request)

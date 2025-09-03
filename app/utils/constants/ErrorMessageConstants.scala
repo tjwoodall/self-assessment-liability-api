@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package utils
+package utils.constants
 
-import scala.util.matching.Regex
-
-object UtrValidator {
-  def isValidUtr(utr: String): Boolean = {
-    val utrPattern: Regex = "^[0-9]{1,10}$".r
-    utrPattern.findFirstMatchIn(utr) match {
-      case Some(_) => true
-      case None    => false
-    }
-  }
+object ErrorMessageConstants {
+  val badRequestMessage = "Invalid request format or parameters."
+  val unauthorisedMessage = "Authorisation failed."
+  val forbiddenMessage = "Access not permitted."
+  val internalErrorMessage = "Unexpected internal error. Please contact service desk."
+  val serviceUnavailableMessage = "Service unavailable. Please try again later."
 }
