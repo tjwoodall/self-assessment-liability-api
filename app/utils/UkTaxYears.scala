@@ -36,9 +36,10 @@ object UkTaxYears {
   ): Boolean = {
     val isBeforeTax: Boolean =
       if (currentDate.isBefore(LocalDate.of(currentDate.getYear, 4, 6))) true else false
-    val startOfSevenTaxYearsAgo =
+    val startOfSevenTaxYearsAgo = {
       if (isBeforeTax) LocalDate.of(currentDate.getYear - 7, Month.APRIL, 6)
       else LocalDate.of(currentDate.getYear - 6, Month.APRIL, 6)
+    }
     dateToValidate.isBefore(startOfSevenTaxYearsAgo) || dateToValidate.isAfter(currentDate)
   }
 }

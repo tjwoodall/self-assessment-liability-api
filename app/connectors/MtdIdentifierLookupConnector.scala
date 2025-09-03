@@ -19,6 +19,7 @@ package connectors
 import config.AppConfig
 import models.ServiceErrors.{Downstream_Error, Service_Currently_Unavailable_Error}
 import models.{MtdId, ServiceErrors}
+import play.api.Logging
 import play.api.libs.json.JsResultException
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -28,7 +29,8 @@ import utils.FutureConverter.FutureOps
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) {
+class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: AppConfig)
+    extends Logging {
   def getMtdId(nino: String)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[MtdId] = {
     client
       .get(url"${appConfig.mtdIdLookup}/mtd-identifier-lookup/nino/$nino")
@@ -37,9 +39,12 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
         case response if response.status == 200 => response.json.as[MtdId].toFuture
         case response if response.status == 500 => Future.failed(Downstream_Error)
         case response if response.status == 400 => Future.failed(Downstream_Error)
-        case _ => Future.failed(Service_Currently_Unavailable_Error)
+        case response =>
+          logger.warn(s"no NINO found for call to ${appConfig.mtdIdLookup}/mtd-identifier-lookup/ ")
+          Future.failed(Service_Currently_Unavailable_Error)
       }
       .recoverWith { case _: JsResultException =>
+        logger.warn("unexpected payload received from mtd look up service")
         Future.failed(Downstream_Error)
       }
   }
