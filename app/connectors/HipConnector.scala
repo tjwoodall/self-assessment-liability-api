@@ -39,7 +39,7 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extend
       fromDate: LocalDate,
       toDate: LocalDate
   )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HipResponse] = {
-    val encryptedAuthToken = Base64.getEncoder.encodeToString(
+    val encodedAuthToken = Base64.getEncoder.encodeToString(
       s"${appConfig.hipClientId}:${appConfig.hipClientSecret}".getBytes(Charsets.UTF_8)
     )
     val queryParameters = Seq(
@@ -47,7 +47,7 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extend
       "dateTo" -> toDate.toString
     )
     val headers = Seq(
-      "Authorization" -> s"Basic $encryptedAuthToken",
+      "Authorization" -> s"Basic $encodedAuthToken",
       "Content-Type" -> "application/json",
       "correlationId" -> UUID.randomUUID.toString
     )
