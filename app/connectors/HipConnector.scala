@@ -16,9 +16,12 @@
 
 package connectors
 
+import com.google.common.base.Charsets
 import config.AppConfig
 import models.HipResponse
 import models.ServiceErrors.*
+
+import java.util.Base64
 import play.api.Logging
 import play.api.libs.json.{JsError, JsSuccess}
 import uk.gov.hmrc.http.HttpReads.Implicits.readRaw
@@ -36,19 +39,24 @@ class HipConnector @Inject() (client: HttpClientV2, appConfig: AppConfig) extend
       fromDate: LocalDate,
       toDate: LocalDate
   )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HipResponse] = {
+    val encodedAuthToken = Base64.getEncoder.encodeToString(
+      s"${appConfig.hipClientId}:${appConfig.hipClientSecret}".getBytes(Charsets.UTF_8)
+    )
     val queryParameters = Seq(
       "dateFrom" -> fromDate.toString,
       "dateTo" -> toDate.toString
     )
-
-    val correlationId: String = UUID.randomUUID.toString
-
+    val headers = Seq(
+      "Authorization" -> s"Basic $encodedAuthToken",
+      "Content-Type" -> "application/json",
+      "correlationId" -> UUID.randomUUID.toString
+    )
     client
       .get(
         url"${appConfig.hipLookup}/self-assessment/account/$utr/liability-details"
       )
       .transform(_.withQueryStringParameters(queryParameters*))
-      .setHeader("correlationId" -> correlationId)
+      .setHeader(headers*)
       .execute[HttpResponse]
       .flatMap {
         case response if response.status == 200 =>
