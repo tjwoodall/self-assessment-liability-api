@@ -23,6 +23,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import shared.{HttpWireMock, SpecBase}
 
+
 class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
 
   override lazy val app: Application = new GuiceApplicationBuilder()
@@ -30,6 +31,7 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
       conf = "microservice.services.mtd-id-lookup.port" -> server.port()
     )
     .build()
+  
   private lazy val connector: MtdIdentifierLookupConnector =
     app.injector.instanceOf[MtdIdentifierLookupConnector]
   private def serviceUrl(nino: String) = s"/mtd-identifier-lookup/nino/$nino"
