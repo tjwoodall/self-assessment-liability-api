@@ -26,17 +26,17 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class SelfAssessmentService @Inject() (
-    cidConncetor: CitizenDetailsConnector,
-    mtdConnector: MtdIdentifierLookupConnector,
-    hipConnector: HipConnector
+                                        cidConnector: CitizenDetailsConnector,
+                                        mtdConnector: MtdIdentifierLookupConnector,
+                                        hipConnector: HipConnector
 )(implicit ec: ExecutionContext) {
   def getMtdIdFromUtr(utr: String)(implicit hc: HeaderCarrier): Future[String] = {
     for {
-      maybeNino <- cidConncetor.getNino(utr)
+      maybeNino <- cidConnector.getNino(utr)
       mtdId <- maybeNino.map(mtdConnector.getMtdId(_)).getOrElse(Future.failed(Downstream_Error))
     } yield mtdId.mtdbsa
   }
-
+  
   def viewAccountService(utr: String, dateFrom: LocalDate, dateTo: LocalDate)(implicit
       hc: HeaderCarrier
   ): Future[HipResponse] = {
