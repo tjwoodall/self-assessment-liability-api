@@ -184,7 +184,7 @@ colima start
 ```console
 sm2 --start SELF_ASSESSMENT_LIABILITY_API_ALL
 ```
-3. Stop the version of this API which was started in the previous command:
+3. Stop the main version of this API which was started in the previous command:
 ```console
 sm2 --stop SELF_ASSESSMENT_LIABILITY_API
 ```
