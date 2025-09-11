@@ -44,10 +44,6 @@ class GlobalErrorHandler extends HttpErrorHandler with Logging {
   }
 
   override def onServerError(request: RequestHeader, exception: Throwable): Future[Result] = {
-    logger.error(s"=== GLOBAL ERROR HANDLER CALLED ===")
-    logger.error(s"Exception: ${exception.getClass.getName}")
-    logger.error(s"Exception message: ${exception.getMessage}")
-    logger.error(s"Request URI: ${request.uri}")
     exception match {
       case Downstream_Error | Json_Validation_Error =>
         InternalServerError(ApiErrorResponses(INTERNAL_ERROR_RESPONSE).asJson).toFuture

@@ -41,8 +41,6 @@ import models.ServiceErrors.{
   Json_Validation_Error,
   No_Data_Found_Error
 }
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.Materializer
 import org.mockito.ArgumentMatchers.{any, eq as meq}
 import org.mockito.Mockito.when
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks.forAll

@@ -19,18 +19,17 @@ package utils
 
 
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{reset, when}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.{Application, inject}
-import services.SelfAssessmentService
 import shared.{HttpWireMock, SpecBase}
 import uk.gov.hmrc.auth.core.AffinityGroup.Organisation
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.{EmptyRetrieval, Retrieval, ~}
 import uk.gov.hmrc.auth.core.{AffinityGroup, AuthConnector, ConfidenceLevel, InsufficientEnrolments}
 import uk.gov.hmrc.http.HeaderCarrier
-import org.mockito.Mockito.reset
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 

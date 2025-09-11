@@ -16,16 +16,21 @@
 
 package controllers
 
-import models.{CidPerson, MtdId, TaxIds}
+import models.{ApiErrorResponses, CidPerson, MtdId, TaxIds}
+import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks.forAll
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{GET, contentAsJson, defaultAwaitTimeout, route, status}
 import shared.HipResponseGenerator
 import uk.gov.hmrc.http.client.HttpClientV2
+import uk.gov.hmrc.http.{HttpResponse, UpstreamErrorResponse}
 import uk.gov.hmrc.play.bootstrap.http.HttpClientV2Provider
 import utils.IntegrationSpecBase
+import uk.gov.hmrc.http.HttpReads.Implicits.*
+import utils.constants.ErrorMessageConstansts.*
 
+import java.net.URI
 import java.time.LocalDate
 import scala.concurrent.Await
 
@@ -39,6 +44,7 @@ class SelfAssessmentHistoryControllerISpec extends IntegrationSpecBase {
     ids = TaxIds(nino = Some(nino)),
     dateOfBirth = None
   )
+
   val dateFrom: String = LocalDate.now().minusYears(2).toString
   val dateTo: String = LocalDate.now().toString
   val cidPayload: String = Json.toJson(cidPerson).toString
@@ -49,37 +55,179 @@ class SelfAssessmentHistoryControllerISpec extends IntegrationSpecBase {
   val cidUrl = s"/citizen-details/sautr/$utr"
   val mtdLookupUrl = s"/mtd-identifier-lookup/nino/$nino"
 
+  "Integration Tests for SA History Controller" must {
+    "CID connection" should {
+      "return 200 with the correct response in success journey" in {
 
-  "Integration Tests for SA History Controller" should {
-    "should return 200 with the correct response in success journey" in {
+        forAll(HipResponseGenerator.hipResponseGen) { hipResponse =>
+          val hipResponsePayload = Json.toJson(hipResponse)
+          simulateGet(cidUrl, OK, cidPayload)
+          simulateGet(mtdLookupUrl, OK, mtdIdPayload)
+          simulateGet(hipUrl, OK, hipResponsePayload.toString)
+          val request = FakeRequest(GET, s"/$utr?fromDate=$dateFrom")
+            .withHeaders("Authorization" -> "Bearer 1234")
 
-      forAll(HipResponseGenerator.hipResponseGen) { hipResponse =>
-        val hipResponsePayload = Json.toJson(hipResponse)
-        simulateGet(cidUrl, OK, cidPayload)
-        simulateGet(mtdLookupUrl, OK, mtdIdPayload)
-        simulateGet(hipUrl, OK, hipResponsePayload.toString)
-        val request = FakeRequest(GET, s"/$utr?fromDate=$dateFrom")
-          .withHeaders("Authorization" -> "Bearer 1234")
+          val result = route(app, request).get
 
-        val result = route(app, request).get
+          status(result) mustEqual OK
+          contentAsJson(result) mustEqual hipResponsePayload
+        }
+      }
+      "return 500 if call fails due to data quality issues" in {
+        simulateGet(cidUrl, INTERNAL_SERVER_ERROR, "")
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
 
-        status(result) mustEqual OK
-        contentAsJson(result) mustEqual hipResponsePayload
+        result.status mustEqual INTERNAL_SERVER_ERROR
+        result.json.as[ApiErrorResponses].message mustEqual INTERNAL_ERROR_RESPONSE
+      }
+
+      "return 500 if call if no nino is found" in {
+        simulateGet(cidUrl, NOT_FOUND, "")
+
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
+
+
+        result.status mustEqual INTERNAL_SERVER_ERROR
+        result.json.as[ApiErrorResponses].message mustEqual INTERNAL_ERROR_RESPONSE
+      }
+
+      "return 500 if call fails as an invalid json body returned" in {
+        simulateGet(cidUrl, OK, Json.obj("someNewField" -> "someValue").toString)
+
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
+
+
+        result.status mustEqual INTERNAL_SERVER_ERROR
+        result.json.as[ApiErrorResponses].message mustEqual INTERNAL_ERROR_RESPONSE
+      }
+      "return 503 if call fails with any other responses " in {
+        simulateGet(cidUrl, PRECONDITION_FAILED, "")
+
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
+
+        result.status mustEqual SERVICE_UNAVAILABLE
+        result.json.as[ApiErrorResponses].message mustEqual SERVICE_UNAVAILABLE_RESPONSE
       }
     }
-    "should return 500 if call to CID fails due to data quality issues" in {
-        simulateGet(cidUrl, OK, "")
-        val request = FakeRequest(GET, s"/$utr?fromDate=$dateFrom")
-          .withHeaders("Authorization" -> "Bearer 1234")
-        val result = route(app, request).get
-        status(result) mustEqual INTERNAL_SERVER_ERROR
-    }
-    "should return 500 if call to CID fails due to data quality issues s" in {
-      simulateGet(cidUrl, NOT_FOUND, "")
-      val request = FakeRequest(GET, s"/$utr?fromDate=$dateFrom")
-        .withHeaders("Authorization" -> "Bearer 1234")
-      val result = route(app, request).get
-      status(result) mustEqual INTERNAL_SERVER_ERROR
+    "mtd lookup service" should {
+      "return 500 if call fails with a 500 response" in {
+        simulateGet(cidUrl, OK, cidPayload)
+        simulateGet(mtdLookupUrl, INTERNAL_SERVER_ERROR, "")
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
+
+        result.status mustEqual INTERNAL_SERVER_ERROR
+        result.json.as[ApiErrorResponses].message mustEqual INTERNAL_ERROR_RESPONSE
+      }
+      "return 500 if call fails with a 400 response" in {
+        simulateGet(cidUrl, OK, cidPayload)
+        simulateGet(mtdLookupUrl, BAD_REQUEST, Json.obj().toString)
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
+
+        result.status mustEqual INTERNAL_SERVER_ERROR
+        result.json.as[ApiErrorResponses].message mustEqual INTERNAL_ERROR_RESPONSE
+      }
+      "return 503 if  call fails due to bad payload" in {
+        simulateGet(cidUrl, OK, cidPayload)
+        simulateGet(mtdLookupUrl, NOT_FOUND, "")
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
+
+        result.status mustEqual SERVICE_UNAVAILABLE
+        result.json.as[ApiErrorResponses].message mustEqual SERVICE_UNAVAILABLE_RESPONSE
+      }
+
+      "return 503 if call fails with any other response" in {
+        simulateGet(cidUrl, OK, cidPayload)
+        simulateGet(mtdLookupUrl, REQUEST_TIMEOUT, Json.obj().toString)
+        val result =
+          Await.result(
+            client
+              .get(URI.create(baseUrl).toURL)
+              .setHeader("Authorization" -> "Bearer 1234")
+              .execute[HttpResponse], 5.seconds)
+
+        result.status mustEqual SERVICE_UNAVAILABLE
+        result.json.as[ApiErrorResponses].message mustEqual SERVICE_UNAVAILABLE_RESPONSE
+      }
+
+      "HIP" should {
+        "respond with a 500 if a bad payload is returned" in {
+          simulateGet(cidUrl, OK, cidPayload)
+          simulateGet(mtdLookupUrl, OK, mtdIdPayload)
+          simulateGet(hipUrl, OK, Json.obj().toString)
+          val result =
+            Await.result(
+              client
+                .get(URI.create(baseUrl).toURL)
+                .setHeader("Authorization" -> "Bearer 1234")
+                .execute[HttpResponse], 5.seconds)
+
+          result.status mustEqual INTERNAL_SERVER_ERROR
+          result.json.as[ApiErrorResponses].message mustEqual INTERNAL_ERROR_RESPONSE
+        }
+        "respond with a 404 if no data is found" in {
+          simulateGet(cidUrl, OK, cidPayload)
+          simulateGet(mtdLookupUrl, OK, mtdIdPayload)
+          simulateGet(hipUrl, NOT_FOUND, Json.obj().toString)
+          val result =
+            Await.result(
+              client
+                .get(URI.create(baseUrl).toURL)
+                .setHeader("Authorization" -> "Bearer 1234")
+                .execute[HttpResponse], 5.seconds)
+
+          result.status mustEqual NOT_FOUND
+          result.json.as[ApiErrorResponses].message mustEqual NOT_FOUND_RESPONSE
+        }
+        "respond with a 500 for any other response" in {
+          simulateGet(cidUrl, OK, cidPayload)
+          simulateGet(mtdLookupUrl, OK, mtdIdPayload)
+          simulateGet(hipUrl,TOO_MANY_REQUESTS , Json.obj().toString)
+          val result =
+            Await.result(
+              client
+                .get(URI.create(baseUrl).toURL)
+                .setHeader("Authorization" -> "Bearer 1234")
+                .execute[HttpResponse], 5.seconds)
+
+          result.status mustEqual INTERNAL_SERVER_ERROR
+          result.json.as[ApiErrorResponses].message mustEqual INTERNAL_ERROR_RESPONSE
+        }
+      }
     }
   }
 }
