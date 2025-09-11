@@ -31,7 +31,6 @@ trait HttpWireMock extends BeforeAndAfterAll with BeforeAndAfterEach {
     wireMockConfig.port(wiremockPort)
   )
 
-
   override def beforeAll(): Unit = {
     server.start()
     super.beforeAll()
