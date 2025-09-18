@@ -43,7 +43,7 @@ class SelfAssessmentHistoryController @Inject() (
           request.requestPeriod.startDate,
           request.requestPeriod.endDate
         )
-        .map(Ok(Json.toJson(_)))
+        .map(hipResponse => Ok(Json.toJson(hipResponse)))
     }
 
 }
