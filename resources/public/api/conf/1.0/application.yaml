@@ -34,7 +34,7 @@ paths:
         "200":
           description: Successful
           content:
-            application/json;charset=UTF-8:
+            application/json:
               schema:
                 $ref: "#/components/schemas/successResponse"
               examples:
@@ -43,7 +43,7 @@ paths:
         "400":
           description: Bad request
           content:
-            application/json;charset=UTF-8:
+            application/json:
               schema:
                 $ref: "#/components/schemas/responseType"
               examples:
@@ -52,7 +52,7 @@ paths:
         "401":
           description: Unauthorised
           content:
-            application/json;charset=UTF-8:
+            application/json:
               schema:
                 $ref: "#/components/schemas/responseType"
               examples:
@@ -61,7 +61,7 @@ paths:
         "403":
           description: Forbidden
           content:
-            application/json;charset=UTF-8:
+            application/json:
               schema:
                 $ref: "#/components/schemas/responseType"
               examples:
@@ -70,7 +70,7 @@ paths:
         "404":
           description: Not found
           content:
-            application/json;charset=UTF-8:
+            application/json:
               schema:
                 $ref: "#/components/schemas/responseType"
               examples:
@@ -79,7 +79,7 @@ paths:
         "500":
           description: Internal Server Error
           content:
-            application/json;charset=UTF-8:
+            application/json:
               schema:
                 $ref: "#/components/schemas/responseType"
               examples:
@@ -88,7 +88,7 @@ paths:
         "503":
           description: Service unavailable
           content:
-            application/json;charset=UTF-8:
+            application/json:
               schema:
                 $ref: "#/components/schemas/responseType"
               examples:
@@ -434,8 +434,8 @@ components:
       schema:
         allOf:
         - type: string
-          pattern: "^\\d{10}$"
-          example: 1234567890
+          pattern: ^\d{10}$
+          example: '1234567890'
       description: Unique Tax Payer Reference
   examples:
     error400ResponseBodyExample:
