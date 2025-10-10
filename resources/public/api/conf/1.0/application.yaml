@@ -513,7 +513,7 @@ components:
           dueDate: 2025-07-15
         refundDetails:
         - refundDate: 2024-01-10
-          refundMethod: bank_transfer
+          refundMethod: bank transfer
           refundRequestDate: 2023-12-12
           refundRequestAmount: 350
           refundDescription: From overpayment from return 05 APR 23
