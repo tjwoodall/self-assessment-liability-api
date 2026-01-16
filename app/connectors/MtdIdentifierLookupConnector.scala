@@ -21,7 +21,8 @@ import config.AppConfig
 import models.ServiceErrors.{
   Downstream_Error,
   Json_Validation_Error,
-  Service_Currently_Unavailable_Error
+  Service_Currently_Unavailable_Error,
+  Unauthorised_Error
 }
 import models.{EtmpValidationError, HipResponseError, MtdId, ServiceErrors}
 import play.api.Logging
@@ -87,7 +88,7 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
               logger.warn(
                 s"call to get MTD ID failed with status ${response.status}. Errors: $errorSummary"
               )
-              Future.failed(Downstream_Error)
+              Future.failed(Unauthorised_Error)
             case JsError(error) =>
               logger.warn(
                 s"validation failed on the error received from HIP when fetching MTD id with error: $error"

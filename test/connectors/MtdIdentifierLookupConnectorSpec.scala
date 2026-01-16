@@ -20,7 +20,8 @@ import models.{EtmpError, EtmpValidationError, HipError, HipErrorDetails, HipRes
 import models.ServiceErrors.{
   Downstream_Error,
   Json_Validation_Error,
-  Service_Currently_Unavailable_Error
+  Service_Currently_Unavailable_Error,
+  Unauthorised_Error
 }
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -79,10 +80,10 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
       val result = connector.getMtdId("nino")
       result.failed.futureValue mustBe Downstream_Error
     }
-    "return Downstream_Error error in case of a 422 response" in {
+    "return Unauthorised_Error error in case of a 422 response" in {
       simulateGet(serviceUrl("invalidNino"), UNPROCESSABLE_ENTITY, etmpError)
       val result = connector.getMtdId("invalidNino")
-      result.failed.futureValue mustBe Downstream_Error
+      result.failed.futureValue mustBe Unauthorised_Error
     }
     "return Json_Validation_Error error in case of a 422 response with invalid response body" in {
       simulateGet(serviceUrl("invalidNino"), UNPROCESSABLE_ENTITY, invalidJsonResponse)
