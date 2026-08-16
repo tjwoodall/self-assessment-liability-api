@@ -121,7 +121,7 @@ components:
           allOf:
           - type: string
             description: Error message.
-      additionalProperties: false
+      additionalProperties: true
       required:
       - message
     successResponse:
