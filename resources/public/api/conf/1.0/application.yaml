@@ -112,9 +112,8 @@ components:
       maximum: 9.999999999999E10
       multipleOf: 0.01
     dateType:
-      allOf:
-      - type: string
-        pattern: "^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[469]|11)[-](0[1-9]|1[0-9]|2[0-9]|30)|(19|20)[0-9]{2}[-](0[13578]|1[02])[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"
+      type: string
+      pattern: "^(((19|20)([2468][048]|[13579][26]|0[48])|2000)[-]02[-]29|((19|20)[0-9]{2}[-](0[469]|11)[-](0[1-9]|1[0-9]|2[0-9]|30)|(19|20)[0-9]{2}[-](0[13578]|1[02])[-](0[1-9]|[12][0-9]|3[01])|(19|20)[0-9]{2}[-]02[-](0[1-9]|1[0-9]|2[0-8])))$"
     responseType:
       type: object
       properties:
@@ -122,7 +121,7 @@ components:
           allOf:
           - type: string
             description: Error message.
-      additionalProperties: false
+      additionalProperties: true
       required:
       - message
     successResponse:
@@ -432,10 +431,9 @@ components:
       name: utr
       required: true
       schema:
-        allOf:
-        - type: string
-          pattern: ^\d{10}$
-          example: '1234567890'
+        type: string
+        pattern: "^\\d{10}$"
+        example: '1234567890'
       description: Unique Tax Payer Reference
   examples:
     error400ResponseBodyExample:
