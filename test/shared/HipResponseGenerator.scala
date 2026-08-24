@@ -61,15 +61,6 @@ object HipResponseGenerator {
     codedOutDetail = codedOutDetails
   )
 
-  val accruingInterestPeriodGen: Gen[AccruingInterestPeriod] = for {
-    startDate <- localDateGen
-    daysToAdd <- Gen.choose(1, 365)
-    endDate = startDate.plusDays(daysToAdd)
-  } yield AccruingInterestPeriod(
-    interestStartDate = startDate,
-    interestEndDate = endDate
-  )
-
   val amendmentsGen: Gen[Amendment] = for {
     amendmentDate <- localDateGen
     amendmentAmount <- Gen.choose(-10000.0, 10000.0).map(BigDecimal(_))
@@ -100,9 +91,7 @@ object HipResponseGenerator {
     outstandingAmount <- Gen.choose(0.0, 50000.0).map(BigDecimal(_))
     taxYear = creationDate.getYear.toString
     dueDate <- localDateGen
-    outstandingInterestDue <- Gen.option(Gen.choose(0.0, 5000.0)).map(_.map(BigDecimal(_)))
     accruingInterest <- Gen.option(Gen.choose(0.0, 1000.0)).map(_.map(BigDecimal(_)))
-    accruingInterestPeriod <- Gen.option(accruingInterestPeriodGen)
     accruingInterestRate <- Gen.option(Gen.choose(0.0, 15.0)).map(_.map(BigDecimal(_)))
     amendments <- Gen.containerOf[List, Amendment](amendmentsGen)
   } yield ChargeDetails(
@@ -113,9 +102,7 @@ object HipResponseGenerator {
     outstandingAmount = outstandingAmount,
     taxYear = taxYear,
     dueDate = dueDate,
-    outstandingInterestDue = outstandingInterestDue,
     accruingInterest = accruingInterest,
-    accruingInterestPeriod = accruingInterestPeriod,
     accruingInterestRate = accruingInterestRate,
     amendments = amendments
   )

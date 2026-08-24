@@ -31,9 +31,7 @@ class ChargeDetailsSpec extends AnyWordSpec with Matchers {
     outstandingAmount = BigDecimal(100),
     taxYear = "2019",
     dueDate = LocalDate.now(),
-    outstandingInterestDue = None,
     accruingInterest = None,
-    accruingInterestPeriod = None,
     accruingInterestRate = None,
     amendments = List.empty
   )
