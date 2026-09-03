@@ -80,13 +80,9 @@ class MtdIdentifierLookupConnector @Inject() (client: HttpClientV2, appConfig: A
         case response if response.status == 422 =>
           response.json.validate[EtmpValidationError] match {
             case JsSuccess(etmpError, _) =>
-              val errorSummary = etmpError.errors
-                .map(e =>
-                  s"at${e.processingDate} error code ${e.code} returned with message: ${e.text}"
-                )
-                .mkString("; ")
+              val error = etmpError.errors
               logger.warn(
-                s"call to get MTD ID failed with status ${response.status}. Errors: $errorSummary"
+                s"call to get MTD ID failed with status ${response.status}. Errors: at ${error.processingDate} error code ${error.code} returned with message: ${error.text}"
               )
               Future.failed(Unauthorised_Error)
             case JsError(error) =>

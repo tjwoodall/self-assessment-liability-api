@@ -50,7 +50,7 @@ class MtdIdentifierLookupConnectorSpec extends SpecBase with HttpWireMock {
   val invalidJsonResponse: String = Json.obj("invalidField" -> "invalidValue").toString()
   private val etmpError = Json
     .toJson(
-      EtmpValidationError(List(EtmpError(processingDate = "date", code = "001", text = "bad utr")))
+      EtmpValidationError(EtmpError(processingDate = "date", code = "001", text = "bad utr"))
     )
     .toString
   "getMtdId" should {

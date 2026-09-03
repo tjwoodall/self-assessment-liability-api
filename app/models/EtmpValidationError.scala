@@ -18,7 +18,7 @@ package models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class EtmpValidationError(errors: List[EtmpError])
+case class EtmpValidationError(errors: EtmpError)
 
 object EtmpValidationError {
   implicit val format: OFormat[EtmpValidationError] = Json.format[EtmpValidationError]
