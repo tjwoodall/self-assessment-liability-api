@@ -26,6 +26,14 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers.*
 import uk.gov.hmrc.auth.core.AuthConnector
 import utils.IntegrationSpecBase
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
+import uk.gov.hmrc.auth.core.InsufficientEnrolments
+import uk.gov.hmrc.auth.core.authorise.Predicate
+import uk.gov.hmrc.auth.core.retrieve.Retrieval
+import uk.gov.hmrc.http.HeaderCarrier
+
+import scala.concurrent.{ExecutionContext, Future}
 
 import scala.concurrent.Await
 
@@ -48,7 +56,8 @@ class SelfAssessmentHistoryAuditSpec
         "auditing.enabled" -> true,
         "auditing.consumer.baseUri.host" -> "localhost",
         "auditing.consumer.baseUri.port" -> server.port(),
-        "metrics.enabled" -> false
+        "metrics.enabled" -> false,
+        "play.http.errorHandler" -> "controllers.GlobalErrorHandler",
       )
       .build()
   }
@@ -124,7 +133,7 @@ class SelfAssessmentHistoryAuditSpec
         .toOption mustBe None
     }
 
-    "audit a meaningful failedRequestReason when a downstream call fails" in {
+    "audit statusCode and responseMessage when a downstream call fails" in {
 
       server.stubFor(
         post(urlEqualTo("/write/audit"))
@@ -211,9 +220,86 @@ class SelfAssessmentHistoryAuditSpec
       val detail =
         requestReceivedAudit \ "detail"
 
-      (detail \ "failedRequestReason")
-        .asOpt[String] mustBe Some("Downstream error")
+      (detail \ "statusCode")
+        .asOpt[String] mustBe Some("500")
 
+      (detail \ "responseMessage")
+        .asOpt[String] must not be empty
+
+      (detail \ "failedRequestReason")
+        .toOption mustBe None
+
+    }
+
+    "audit statusCode and responseMessage for an authentication failure" in {
+
+      server.stubFor(
+        post(urlEqualTo("/write/audit"))
+          .willReturn(
+            aResponse().withStatus(NO_CONTENT)
+          )
+      )
+
+      when(
+        mockAuthConnector.authorise[RetrievalsType](
+          any[Predicate](),
+          any[Retrieval[RetrievalsType]]()
+        )(any[HeaderCarrier](), any[ExecutionContext]())
+      ).thenReturn(
+        Future.failed(InsufficientEnrolments())
+      )
+
+      val request =
+        FakeRequest(
+          GET,
+          "/1234567890?fromDate=2024-01-01"
+        )
+
+      val result = route(app, request).get
+
+      status(result) mustBe UNAUTHORIZED
+
+      eventually {
+        val auditRequests =
+          server.findAll(
+            postRequestedFor(urlEqualTo("/write/audit"))
+          )
+
+        val requestReceivedAudits =
+          auditRequests
+            .toArray
+            .map(
+              _.asInstanceOf[
+                com.github.tomakehurst.wiremock.verification.LoggedRequest
+              ]
+            )
+            .map(request => Json.parse(request.getBodyAsString))
+            .filter { auditBody =>
+              (auditBody \ "auditType")
+                .asOpt[String]
+                .contains("RequestReceived")
+            }
+
+        val matchingAudit =
+          requestReceivedAudits.find { auditBody =>
+            (auditBody \ "detail" \ "input")
+              .asOpt[String]
+              .exists(_.contains("1234567890"))
+          }.getOrElse {
+            fail("No matching RequestReceived audit event was found")
+          }
+
+        val detail = matchingAudit \ "detail"
+
+        (detail \ "statusCode")
+          .asOpt[String] mustBe Some("401")
+
+        (detail \ "responseMessage")
+          .asOpt[String] must not be empty
+
+        (detail \ "failedRequestReason")
+          .toOption mustBe None
+      }
     }
   }
 }
