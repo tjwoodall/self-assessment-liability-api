@@ -26,9 +26,9 @@ import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
 @Singleton
-class ExceptionRecoveryFilter @Inject() (
-                                          implicit ec: ExecutionContext
-                                        ) extends EssentialFilter {
+class ExceptionRecoveryFilter @Inject() (implicit
+    ec: ExecutionContext
+) extends EssentialFilter {
 
   override def apply(next: EssentialAction): EssentialAction =
     EssentialAction { request =>
@@ -43,9 +43,8 @@ class ExceptionRecoveryFilter @Inject() (
             )
         }
 
-      accumulator.recover {
-        case NonFatal(exception) =>
-          ErrorResponseMapper.toResult(exception)
+      accumulator.recover { case NonFatal(exception) =>
+        ErrorResponseMapper.toResult(exception)
       }
     }
 }
