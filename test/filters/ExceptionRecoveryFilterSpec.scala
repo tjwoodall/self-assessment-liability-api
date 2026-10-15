@@ -72,7 +72,30 @@ class ExceptionRecoveryFilterSpec extends AnyWordSpec with Matchers {
         val filteredAction = filter(successfulAction)
         val result = filteredAction(FakeRequest()).run()
 
-        status(result).shouldBe(OK)
+        status(result) shouldBe OK
+        contentAsString(result) shouldBe "Success"
+      }
+    }
+
+    "convert a synchronous exception into a 503 response" in {
+      val application = new GuiceApplicationBuilder().build()
+
+      running(application) {
+        implicit val mat: Materializer =
+          application.injector.instanceOf[Materializer]
+
+        val filter = new ExceptionRecoveryFilter()
+
+        val failingAction: EssentialAction = EssentialAction { _ =>
+          throw new RuntimeException("Synchronous test failure")
+        }
+
+        val filteredAction = filter(failingAction)
+        val result = filteredAction(FakeRequest()).run()
+
+        status(result) shouldBe SERVICE_UNAVAILABLE
+        contentAsString(result) shouldBe
+          """{"message":"Service unavailable. Please try again later."}"""
       }
     }
   }

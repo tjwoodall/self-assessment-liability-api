@@ -16,26 +16,25 @@
 
 package controllers
 
-import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, get, post, postRequestedFor, urlEqualTo}
-import org.scalatest.concurrent.Eventually
-import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
-import play.api.Application
-import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
-import play.api.test.FakeRequest
-import play.api.test.Helpers.*
-import uk.gov.hmrc.auth.core.AuthConnector
-import utils.IntegrationSpecBase
+import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, get, post, postRequestedFor, urlEqualTo, urlPathEqualTo}
+import com.github.tomakehurst.wiremock.verification.LoggedRequest
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
-import uk.gov.hmrc.auth.core.InsufficientEnrolments
+import org.scalatest.concurrent.Eventually
+import play.api.Application
+import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.{JsValue, Json}
+import play.api.test.FakeRequest
+import play.api.test.Helpers.*
+import uk.gov.hmrc.auth.core.{AuthConnector, ConfidenceLevel, InsufficientEnrolments}
+import uk.gov.hmrc.auth.core.AffinityGroup.{Individual, Organisation}
 import uk.gov.hmrc.auth.core.authorise.Predicate
-import uk.gov.hmrc.auth.core.retrieve.Retrieval
+import uk.gov.hmrc.auth.core.retrieve.v2.Retrievals.{affinityGroup, confidenceLevel}
+import uk.gov.hmrc.auth.core.retrieve.{Retrieval, ~}
 import uk.gov.hmrc.http.HeaderCarrier
+import utils.IntegrationSpecBase
 
 import scala.concurrent.{ExecutionContext, Future}
-
-import scala.concurrent.Await
 
 class SelfAssessmentHistoryAuditSpec
   extends IntegrationSpecBase
@@ -46,53 +45,49 @@ class SelfAssessmentHistoryAuditSpec
 
     new GuiceApplicationBuilder()
       .overrides(
-        play.api.inject.bind[AuthConnector].toInstance(mockAuthConnector)
+        play.api.inject.bind[AuthConnector]
+          .toInstance(mockAuthConnector)
       )
       .configure(
-        "play.http.errorHandler" -> "controllers.GlobalErrorHandler",
-        "microservice.services.citizen-details.port" -> server.port(),
-        "microservice.services.mtd-id-lookup.port" -> server.port(),
-        "microservice.services.hip.port" -> server.port(),
+        "play.http.errorHandler" ->
+          "controllers.GlobalErrorHandler",
+        "microservice.services.citizen-details.port" ->
+          server.port(),
+        "microservice.services.mtd-id-lookup.port" ->
+          server.port(),
+        "microservice.services.hip.port" ->
+          server.port(),
         "auditing.enabled" -> true,
         "auditing.consumer.baseUri.host" -> "localhost",
         "auditing.consumer.baseUri.port" -> server.port(),
-        "metrics.enabled" -> false,
-        "play.http.errorHandler" -> "controllers.GlobalErrorHandler",
+        "metrics.enabled" -> false
       )
       .build()
   }
 
-  "SelfAssessmentHistoryController request auditing" should {
+  private def stubAuditEndpoint(): Unit = {
+    server.resetAll()
 
-    "audit statusCode and responseMessage instead of failedRequestReason for an invalid UTR" in {
-
-      server.stubFor(
-        post(urlEqualTo("/write/audit"))
-          .willReturn(
-            aResponse()
-              .withStatus(NO_CONTENT)
-          )
-      )
-
-      val request =
-        FakeRequest(
-          GET,
-          "/invalidUtr?fromDate=2024-01-01"
+    server.stubFor(
+      post(urlEqualTo("/write/audit"))
+        .willReturn(
+          aResponse().withStatus(NO_CONTENT)
         )
+    )
 
-      val result =
-        route(app, request).get
-
-      Await.ready(result, 5.seconds)
-
-      eventually {
-        server.verify(
-          postRequestedFor(
-            urlEqualTo("/write/audit")
-          )
+    server.stubFor(
+      post(urlEqualTo("/write/audit/merged"))
+        .willReturn(
+          aResponse().withStatus(NO_CONTENT)
         )
-      }
+    )
+  }
 
+  private def verifyRequestReceivedAudit(
+                                          expectedStatus: Int
+                                        ): Unit = {
+
+    eventually {
       val auditRequests =
         server.findAll(
           postRequestedFor(
@@ -100,31 +95,37 @@ class SelfAssessmentHistoryAuditSpec
           )
         )
 
-      auditRequests.size() must be >= 1
-
-      val requestReceivedAudit =
+      val requestReceivedAudits: Seq[JsValue] =
         auditRequests
           .toArray
-          .map(
-            _.asInstanceOf[
-              com.github.tomakehurst.wiremock.verification.LoggedRequest
-            ]
+          .map(_.asInstanceOf[LoggedRequest])
+          .map(request =>
+            Json.parse(request.getBodyAsString)
           )
-          .map(request => Json.parse(request.getBodyAsString))
-          .find { auditBody =>
+          .filter { auditBody =>
             (auditBody \ "auditType")
               .asOpt[String]
               .contains("RequestReceived")
           }
-          .getOrElse {
-            fail("No RequestReceived audit event was found")
-          }
+          .toSeq
 
-      val detail =
-        requestReceivedAudit \ "detail"
+      val matchingAudit =
+        requestReceivedAudits.find { auditBody =>
+          (auditBody \ "detail" \ "statusCode")
+            .asOpt[String]
+            .contains(expectedStatus.toString)
+        }.getOrElse {
+          fail(
+            s"No RequestReceived audit event with status $expectedStatus was found"
+          )
+        }
+
+      val detail = matchingAudit \ "detail"
 
       (detail \ "statusCode")
-        .asOpt[String] mustBe Some("400")
+        .asOpt[String] mustBe Some(
+        expectedStatus.toString
+      )
 
       (detail \ "responseMessage")
         .asOpt[String] must not be empty
@@ -132,35 +133,100 @@ class SelfAssessmentHistoryAuditSpec
       (detail \ "failedRequestReason")
         .toOption mustBe None
     }
+  }
+
+  "SelfAssessmentHistoryController request auditing" should {
+
+    "audit statusCode and responseMessage for a successful request" in {
+      stubAuditEndpoint()
+
+      when(
+        mockAuthConnector.authorise[RetrievalsType](
+          any[Predicate](),
+          any[Retrieval[RetrievalsType]]()
+        )(any[HeaderCarrier](), any[ExecutionContext]())
+      ).thenAnswer { invocation =>
+        val retrieval = invocation.getArgument[Retrieval[?]](1)
+
+        if (retrieval == (affinityGroup and confidenceLevel)) {
+          Future.successful(
+            new~(Some(Individual), ConfidenceLevel.L250)
+          )
+        } else {
+          Future.successful(())
+        }
+      }
+
+      val successfulHipResponse = Json.obj(
+        "balanceDetails" -> Json.obj(
+          "totalOverdueBalance" -> 0,
+          "totalPayableBalance" -> 0,
+          "totalPendingBalance" -> 0,
+          "totalBalance" -> 0,
+          "totalCreditAvailable" -> 0
+        )
+      )
+
+      server.stubFor(
+        get(urlPathEqualTo(
+          "/as/self-assessment/account/1234567890/liability-details"
+        )).willReturn(
+          aResponse()
+            .withStatus(OK)
+            .withHeader("Content-Type", "application/json")
+            .withBody(Json.stringify(successfulHipResponse))
+        )
+      )
+
+      val request = FakeRequest(
+        GET,
+        "/1234567890?fromDate=2024-01-01"
+      )
+
+      val result = route(app, request).get
+
+      status(result) mustBe OK
+
+      verifyRequestReceivedAudit(OK)
+    }
+
+    "audit statusCode and responseMessage for an invalid UTR" in {
+
+      stubAuditEndpoint()
+
+      val request =
+        FakeRequest(
+          GET,
+          "/invalidUtr?fromDate=2024-01-01"
+        )
+
+      val result = route(app, request).get
+
+      status(result) mustBe BAD_REQUEST
+
+      verifyRequestReceivedAudit(BAD_REQUEST)
+    }
 
     "audit statusCode and responseMessage when a downstream call fails" in {
 
-      server.stubFor(
-        post(urlEqualTo("/write/audit"))
-          .willReturn(
-            aResponse()
-              .withStatus(NO_CONTENT)
-          )
-      )
+      stubAuditEndpoint()
 
       server.stubFor(
-        post(urlEqualTo("/write/audit/merged"))
-          .willReturn(
-            aResponse()
-              .withStatus(NO_CONTENT)
+        get(
+          urlEqualTo(
+            "/citizen-details/sautr/1234567890"
           )
-      )
-
-      server.stubFor(
-        get(urlEqualTo("/citizen-details/sautr/1234567890"))
-          .willReturn(
-            aResponse()
-              .withStatus(INTERNAL_SERVER_ERROR)
-              .withHeader("Content-Type", "application/json")
-              .withBody(
-                """{"message":"downstream failed"}"""
-              )
-          )
+        ).willReturn(
+          aResponse()
+            .withStatus(INTERNAL_SERVER_ERROR)
+            .withHeader(
+              "Content-Type",
+              "application/json"
+            )
+            .withBody(
+              """{"message":"downstream failed"}"""
+            )
+        )
       )
 
       val request =
@@ -169,82 +235,25 @@ class SelfAssessmentHistoryAuditSpec
           "/1234567890?fromDate=2024-01-01"
         )
 
-      val result =
-        route(app, request).get
+      val result = route(app, request).get
 
-      Await.ready(result, 5.seconds)
+      status(result) mustBe INTERNAL_SERVER_ERROR
 
-      eventually {
-        server.verify(
-          postRequestedFor(
-            urlEqualTo("/write/audit")
-          )
-        )
-      }
-
-      eventually {
-        server.verify(
-          postRequestedFor(
-            urlEqualTo("/write/audit")
-          )
-        )
-      }
-
-      val auditRequests =
-        server.findAll(
-          postRequestedFor(
-            urlEqualTo("/write/audit")
-          )
-        )
-
-      auditRequests.size() must be >= 1
-
-      val requestReceivedAudit =
-        auditRequests
-          .toArray
-          .map(
-            _.asInstanceOf[
-              com.github.tomakehurst.wiremock.verification.LoggedRequest
-            ]
-          )
-          .map(request => Json.parse(request.getBodyAsString))
-          .find { auditBody =>
-            (auditBody \ "auditType")
-              .asOpt[String]
-              .contains("RequestReceived")
-          }
-          .getOrElse {
-            fail("No RequestReceived audit event was found")
-          }
-
-      val detail =
-        requestReceivedAudit \ "detail"
-
-      (detail \ "statusCode")
-        .asOpt[String] mustBe Some("500")
-
-      (detail \ "responseMessage")
-        .asOpt[String] must not be empty
-
-      (detail \ "failedRequestReason")
-        .toOption mustBe None
-
+      verifyRequestReceivedAudit(INTERNAL_SERVER_ERROR)
     }
 
     "audit statusCode and responseMessage for an authentication failure" in {
 
-      server.stubFor(
-        post(urlEqualTo("/write/audit"))
-          .willReturn(
-            aResponse().withStatus(NO_CONTENT)
-          )
-      )
+      stubAuditEndpoint()
 
       when(
         mockAuthConnector.authorise[RetrievalsType](
           any[Predicate](),
           any[Retrieval[RetrievalsType]]()
-        )(any[HeaderCarrier](), any[ExecutionContext]())
+        )(
+          any[HeaderCarrier](),
+          any[ExecutionContext]()
+        )
       ).thenReturn(
         Future.failed(InsufficientEnrolments())
       )
@@ -259,47 +268,72 @@ class SelfAssessmentHistoryAuditSpec
 
       status(result) mustBe UNAUTHORIZED
 
-      eventually {
-        val auditRequests =
-          server.findAll(
-            postRequestedFor(urlEqualTo("/write/audit"))
-          )
+      verifyRequestReceivedAudit(UNAUTHORIZED)
+    }
 
-        val requestReceivedAudits =
-          auditRequests
-            .toArray
-            .map(
-              _.asInstanceOf[
-                com.github.tomakehurst.wiremock.verification.LoggedRequest
-              ]
-            )
-            .map(request => Json.parse(request.getBodyAsString))
-            .filter { auditBody =>
-              (auditBody \ "auditType")
-                .asOpt[String]
-                .contains("RequestReceived")
-            }
+    "audit statusCode and responseMessage for an unsupported HTTP method" in {
 
-        val matchingAudit =
-          requestReceivedAudits.find { auditBody =>
-            (auditBody \ "detail" \ "input")
-              .asOpt[String]
-              .exists(_.contains("1234567890"))
-          }.getOrElse {
-            fail("No matching RequestReceived audit event was found")
-          }
+      stubAuditEndpoint()
 
-        val detail = matchingAudit \ "detail"
+      val request =
+        FakeRequest(
+          POST,
+          "/1234567890?fromDate=2024-01-01"
+        )
 
-        (detail \ "statusCode")
-          .asOpt[String] mustBe Some("401")
+      val result = route(app, request).get
 
-        (detail \ "responseMessage")
-          .asOpt[String] must not be empty
+      status(result) mustBe NOT_FOUND
 
-        (detail \ "failedRequestReason")
-          .toOption mustBe None
-      }
+      verifyRequestReceivedAudit(NOT_FOUND)
+    }
+
+    "audit statusCode and responseMessage for an invalid fromDate" in {
+
+      stubAuditEndpoint()
+
+      val request =
+        FakeRequest(
+          GET,
+          "/1234567890?fromDate=not-a-date"
+        )
+
+      val result = route(app, request).get
+
+      status(result) mustBe BAD_REQUEST
+
+      verifyRequestReceivedAudit(BAD_REQUEST)
+    }
+
+    "audit statusCode and responseMessage for insufficient confidence" in {
+
+      stubAuditEndpoint()
+
+      when(
+        mockAuthConnector.authorise[RetrievalsType](
+          any[Predicate](),
+          any[Retrieval[RetrievalsType]]()
+        )(
+          any[HeaderCarrier](),
+          any[ExecutionContext]()
+        )
+      ).thenReturn(
+        Future.successful(
+          new~(Some(Individual), ConfidenceLevel.L50)
+        )
+      )
+
+      val request =
+        FakeRequest(
+          GET,
+          "/1234567890?fromDate=2024-01-01"
+        )
+
+      val result = route(app, request).get
+
+      status(result) mustBe UNAUTHORIZED
+
+      verifyRequestReceivedAudit(UNAUTHORIZED)
     }
   }
 }
