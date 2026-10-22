@@ -74,12 +74,12 @@ class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) exte
         EitherT {
           Future.successful {
             Try(LocalDate.parse(dateInStringFormat)).toEither match {
-              case Right(parsedDate) if !isInvalidDate(dateToValidate = parsedDate) =>
-                Right(parsedDate)
-
-              case Right(_) =>
+              case Right(parsedDate) if isInvalidDate(dateToValidate = parsedDate) =>
                 logger.info(s"Rejecting $dateInStringFormat as it is invalid")
                 Left(badRequest)
+
+              case Right(parsedDate) =>
+                Right(parsedDate)
 
               case Left(_: DateTimeParseException) =>
                 logger.info(s"parsing of $dateInStringFormat failed")
