@@ -16,6 +16,7 @@
 
 package controllers.actions
 
+import cats.data.EitherT
 import com.google.inject.Inject
 import models.{ApiErrorResponses, RequestPeriod, RequestWithUtr}
 import play.api.Logging
@@ -28,7 +29,7 @@ import utils.constants.ErrorMessageConstansts.BAD_REQUEST_RESPONSE
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) extends Logging {
 
@@ -41,66 +42,54 @@ class ValidateRequestAction @Inject() ()(implicit val ec: ExecutionContext) exte
           request: Request[A]
       ): Future[Either[Result, RequestWithUtr[A]]] = {
 
-        if (isValidUtr(utr)) {
-          val requestPeriod = getPastTwoUkTaxYears()
-
-          request
-            .getQueryString("fromDate")
-            .fold(
-              Future.successful(
-                Right(
-                  RequestWithUtr(
-                    utr = utr,
-                    requestPeriod = RequestPeriod(
-                      startDate = requestPeriod._1,
-                      endDate = requestPeriod._2
-                    ),
-                    request = request
-                  )
-                )
-              )
-            ) { dateInStringFormat =>
-              validateAndParseDate(dateInStringFormat).map {
-                case Right(date) =>
-                  Right(
-                    RequestWithUtr(
-                      utr = utr,
-                      requestPeriod = RequestPeriod(
-                        startDate = date,
-                        endDate = requestPeriod._2
-                      ),
-                      request = request
-                    )
-                  )
-
-                case Left(result) =>
-                  Left(result)
-              }
-            }
-        } else {
-          Future.successful(
-            Left(badRequest)
+        val validation = for {
+          _ <- EitherT.cond[Future](
+            isValidUtr(utr),
+            (),
+            badRequest
           )
-        }
+          requestPeriod = getPastTwoUkTaxYears()
+          startDate <- request.getQueryString("fromDate") match {
+            case Some(date) =>
+              validateAndParseDate(date)
+            case None =>
+              EitherT.rightT[Future, Result](requestPeriod._1)
+          }
+        } yield RequestWithUtr(
+          utr = utr,
+          requestPeriod = RequestPeriod(
+            startDate = startDate,
+            endDate = requestPeriod._2
+          ),
+          request = request
+        )
+
+        validation.value
       }
 
       private def validateAndParseDate(
           dateInStringFormat: String
-      ): Future[Either[Result, LocalDate]] = {
-        Future
-          .fromTry(Try(LocalDate.parse(dateInStringFormat)))
-          .map { parsedDate =>
-            if (isInvalidDate(dateToValidate = parsedDate)) {
-              logger.info(s"Rejecting $dateInStringFormat as it is invalid")
-              Left(badRequest)
-            } else {
-              Right(parsedDate)
+      ): EitherT[Future, Result, LocalDate] = {
+
+        EitherT {
+          Future.successful {
+            Try(LocalDate.parse(dateInStringFormat)).toEither match {
+              case Right(parsedDate) if isInvalidDate(dateToValidate = parsedDate) =>
+                logger.info(s"Rejecting $dateInStringFormat as it is invalid")
+                Left(badRequest)
+
+              case Right(parsedDate) =>
+                Right(parsedDate)
+
+              case Left(_: DateTimeParseException) =>
+                logger.info(s"parsing of $dateInStringFormat failed")
+                Left(badRequest)
+
+              case Left(error) =>
+                throw error
             }
           }
-          .recover { case _: DateTimeParseException =>
-            logger.info(s"parsing of $dateInStringFormat failed")
-            Left(badRequest)
-          }
+        }
       }
 
       private def badRequest: Result =
