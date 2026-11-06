@@ -95,7 +95,7 @@ paths:
                 error503ResponseBodyExample:
                   $ref: "#/components/examples/error503ResponseBodyExample"
       security:
-      - userRestricted:
+      - User-Restricted:
         - read:self-assessment
 components:
   schemas:
@@ -404,7 +404,7 @@ components:
       - type: string
         pattern: "^([0-9]{4})-([0-9]{4})$"
   securitySchemes:
-    userRestricted:
+    User-Restricted:
       type: oauth2
       description: "HMRC supports OAuth 2.0 for authenticating user restricted API requests using an OAuth 2.0 Bearer Token in the AUTHORIZATION header. Please see the [developer hub](https://developer.service.hmrc.gov.uk/api-documentation/docs/authorisation/user-restricted-endpoints) for more details."
       flows:
